@@ -37,7 +37,18 @@ export default function ErrorPage({
         <Button asChild variant="outline" className="rounded-full px-6">
           <Link href="/">Kembali ke Beranda</Link>
         </Button>
+        <Button
+          asChild
+          variant="ghost"
+          className="rounded-full px-6 text-muted-foreground"
+        >
+          <a href="/logout">Keluar &amp; Login Ulang</a>
+        </Button>
       </div>
+      <p className="mt-4 max-w-md text-xs leading-relaxed text-muted-foreground">
+        Bila error terus berulang setelah login, klik &ldquo;Keluar &amp; Login
+        Ulang&rdquo; untuk membersihkan sesi lama.
+      </p>
     </div>
   );
 }

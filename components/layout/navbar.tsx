@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { Menu, Zap } from "lucide-react";
+import { LogOut, Menu, Zap } from "lucide-react";
 
 import { NAV_LINKS, SITE } from "@/lib/constants";
 import { cn } from "@/lib/utils";
@@ -88,13 +88,25 @@ export function Navbar({ user }: NavbarProps) {
         <div className="flex items-center gap-1.5">
           <ThemeToggle />
           {user ? (
-            <Button
-              asChild
-              size="sm"
-              className="hidden rounded-full px-4 md:inline-flex"
-            >
-              <Link href={dashboardHref}>Dashboard</Link>
-            </Button>
+            <>
+              <Button
+                asChild
+                size="sm"
+                className="hidden rounded-full px-4 md:inline-flex"
+              >
+                <Link href={dashboardHref}>Dashboard</Link>
+              </Button>
+              <Button
+                asChild
+                variant="ghost"
+                size="icon"
+                className="hidden text-muted-foreground hover:bg-destructive/10 hover:text-destructive md:inline-flex"
+              >
+                <a href="/logout" aria-label="Keluar dari akun" title="Keluar">
+                  <LogOut className="size-4.5" />
+                </a>
+              </Button>
+            </>
           ) : (
             <>
               <Button
@@ -158,11 +170,23 @@ export function Navbar({ user }: NavbarProps) {
                 <Separator className="my-4" />
                 <div className="flex flex-col gap-2">
                   {user ? (
-                    <SheetClose asChild>
-                      <Button asChild className="w-full rounded-full">
-                        <Link href={dashboardHref}>Dashboard</Link>
+                    <>
+                      <SheetClose asChild>
+                        <Button asChild className="w-full rounded-full">
+                          <Link href={dashboardHref}>Dashboard</Link>
+                        </Button>
+                      </SheetClose>
+                      <Button
+                        asChild
+                        variant="outline"
+                        className="w-full text-destructive hover:bg-destructive/10 hover:text-destructive"
+                      >
+                        <a href="/logout">
+                          <LogOut className="size-4" />
+                          Keluar
+                        </a>
                       </Button>
-                    </SheetClose>
+                    </>
                   ) : (
                     <>
                       <SheetClose asChild>

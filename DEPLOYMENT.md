@@ -132,6 +132,8 @@ cd shop-topinzpedia && git pull && npm install && npm run build && pm2 restart t
 
 | Gejala | Penyebab & solusi |
 | --- | --- |
+| Redirect bolak-balik `/login` ↔ `/dashboard` (loop 307 di log) | Versi lama punya bug pembacaan cookie `__Secure-` di middleware — **sudah diperbaiki**; pastikan memakai kode terbaru. Sesi lama yang rusak bisa dibersihkan dengan membuka **`/logout`** |
+| Terjebak login / sesi aneh | Buka **`https://DOMAINMU/logout`** — menghapus semua cookie sesi lalu kembali ke beranda |
 | Login/register stuck, halaman `/login` blank atau error "Configuration" | `AUTH_SECRET` belum diset → set lalu restart. Di VPS/Railway pastikan juga `AUTH_TRUST_HOST=true` |
 | Login sukses tapi terpental balik ke `/login` | Situs diakses via `http://` (cookie secure tidak tersimpan) → pasang HTTPS; atau header `X-Forwarded-Proto` tidak diteruskan Nginx (lihat config di atas) |
 | Halaman lambat/timeout, data kosong | `MONGODB_URI` salah atau IP belum di-allowlist di Atlas (**Network Access → 0.0.0.0/0**) |

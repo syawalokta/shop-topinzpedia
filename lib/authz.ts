@@ -9,11 +9,17 @@ export interface SessionUser {
   image?: string | null;
 }
 
-/** Ambil user dari sesi aktif (null bila belum login). */
+const OBJECT_ID_RE = /^[0-9a-fA-F]{24}$/;
+
+/**
+ * Ambil user dari sesi aktif (null bila belum login).
+ * Sesi dengan id yang bukan ObjectId (mis. cookie lama/rusak)
+ * diperlakukan sebagai belum login agar tidak membuat query crash.
+ */
 export async function getSessionUser(): Promise<SessionUser | null> {
   const session = await auth();
   const user = session?.user;
-  if (!user?.id) return null;
+  if (!user?.id || !OBJECT_ID_RE.test(user.id)) return null;
 
   return {
     id: user.id,
