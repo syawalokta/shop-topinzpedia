@@ -30,6 +30,8 @@
 | Form & Validasi | React Hook Form + Zod |
 | Ikon | Lucide React |
 
+> 📦 **Mau deploy?** Lihat **[DEPLOYMENT.md](./DEPLOYMENT.md)** — panduan lengkap Vercel, Railway, dan VPS (Nginx + PM2 + HTTPS) beserta troubleshooting.
+
 ## 🚀 Menjalankan Proyek
 
 **1. Instal dependensi**

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
+import { ArrowLeft, CheckCircle2 } from "lucide-react";
 
 import { getSessionUser } from "@/lib/authz";
 import { getSiteSettings } from "@/lib/services/settings";
@@ -21,11 +21,11 @@ export const metadata: Metadata = {
 };
 
 interface LoginPageProps {
-  searchParams: Promise<{ callbackUrl?: string }>;
+  searchParams: Promise<{ callbackUrl?: string; registered?: string }>;
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const [{ callbackUrl }, user, settings] = await Promise.all([
+  const [{ callbackUrl, registered }, user, settings] = await Promise.all([
     searchParams,
     getSessionUser(),
     getSiteSettings(),
@@ -39,6 +39,16 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
 
   return (
     <div className="w-full max-w-md">
+      {registered ? (
+        <div
+          role="status"
+          className="mb-4 flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-sm leading-relaxed text-emerald-700 dark:text-emerald-400"
+        >
+          <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
+          Akun berhasil dibuat! Silakan login dengan email/username dan
+          password yang barusan kamu daftarkan.
+        </div>
+      ) : null}
       <Card>
         <CardHeader>
           <CardTitle className="text-xl">Selamat datang kembali 👋</CardTitle>

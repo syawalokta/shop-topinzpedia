@@ -5,7 +5,6 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2, RotateCcw, ShieldQuestion } from "lucide-react";
-import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
@@ -87,14 +86,9 @@ export function RegisterForm({ initialCaptcha }: RegisterFormProps) {
       return;
     }
 
-    toast.success("Akun berhasil dibuat! Mengalihkan ke dashboard…");
-    await signIn("credentials", {
-      identifier: values.email,
-      password: values.password,
-      redirect: false,
-    });
-    router.push("/dashboard");
-    router.refresh();
+    // Tanpa auto-login — arahkan ke halaman login agar user masuk manual.
+    toast.success("Akun berhasil dibuat! Silakan login.");
+    router.push("/login?registered=1");
   }
 
   const fieldError = (message?: string) =>

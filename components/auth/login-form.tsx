@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Loader2 } from "lucide-react";
 import { signIn } from "next-auth/react";
@@ -28,7 +27,6 @@ interface LoginFormProps {
 }
 
 export function LoginForm({ googleEnabled, callbackUrl }: LoginFormProps) {
-  const router = useRouter();
   const [googleLoading, setGoogleLoading] = useState(false);
   const target = callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/dashboard";
 
@@ -46,13 +44,18 @@ export function LoginForm({ googleEnabled, callbackUrl }: LoginFormProps) {
     });
 
     if (result?.error) {
-      toast.error("Email/username atau password salah.");
+      toast.error(
+        result.error === "Configuration"
+          ? "Konfigurasi auth server belum lengkap (cek AUTH_SECRET di environment)."
+          : "Email/username atau password salah."
+      );
       return;
     }
 
     toast.success("Berhasil masuk. Selamat datang kembali!");
-    router.push(target);
-    router.refresh();
+    // Navigasi penuh (bukan client-side) agar cookie sesi pasti
+    // terbaca middleware — lebih tahan banting di berbagai hosting.
+    window.location.assign(target);
   }
 
   return (
