@@ -96,10 +96,16 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           throw new LoginError("invalid");
         }
 
-        // 4. Wajib verifikasi email dulu (dicek SETELAH password valid
-        //    agar tidak membocorkan status akun ke penebak password)
-        if (!user.emailVerified) {
-          throw new LoginError("unverified");
+        // 4. Verifikasi email — HANYA bila fitur aktif di pengaturan admin
+        //    dan SMTP terpasang. Admin selalu dikecualikan agar tidak
+        //    pernah terkunci dari panelnya sendiri.
+        //    (Dicek SETELAH password valid agar tidak membocorkan status
+        //    akun ke penebak password.)
+        if (user.role !== "admin" && !user.emailVerified) {
+          const settings = await getSiteSettings();
+          if (settings.emailVerificationEnabled && settings.mailConfigured) {
+            throw new LoginError("unverified");
+          }
         }
 
         // 5. Sukses — reset counter

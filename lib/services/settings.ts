@@ -17,8 +17,12 @@ export interface PaymentSettingsDTO {
 export interface SiteSettingsDTO {
   googleAuthEnabled: boolean;
   registrationEnabled: boolean;
+  /** Wajib verifikasi email saat register (hanya efektif bila SMTP terpasang) */
+  emailVerificationEnabled: boolean;
   /** true bila env GOOGLE_CLIENT_ID + SECRET terpasang */
   googleConfigured: boolean;
+  /** true bila env SMTP terpasang */
+  mailConfigured: boolean;
 }
 
 const paymentDefaults: PaymentSettingsDTO = {
@@ -75,26 +79,39 @@ export async function getSiteSettings(): Promise<SiteSettingsDTO> {
   const googleConfigured = Boolean(
     process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
   );
+  const mailConfigured = Boolean(
+    process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS
+  );
 
   try {
     await connectDB();
     const doc = await SiteSetting.findOneAndUpdate(
       { key: "site" },
-      { $setOnInsert: { googleAuthEnabled: false, registrationEnabled: true } },
+      {
+        $setOnInsert: {
+          googleAuthEnabled: false,
+          registrationEnabled: true,
+          emailVerificationEnabled: false,
+        },
+      },
       { upsert: true, new: true }
     ).lean();
 
     return {
       googleAuthEnabled: doc?.googleAuthEnabled ?? false,
       registrationEnabled: doc?.registrationEnabled ?? true,
+      emailVerificationEnabled: doc?.emailVerificationEnabled ?? false,
       googleConfigured,
+      mailConfigured,
     };
   } catch (error) {
     console.error("[services/settings] fallback site defaults:", error);
     return {
       googleAuthEnabled: false,
       registrationEnabled: true,
+      emailVerificationEnabled: false,
       googleConfigured,
+      mailConfigured,
     };
   }
 }
@@ -102,6 +119,7 @@ export async function getSiteSettings(): Promise<SiteSettingsDTO> {
 export async function updateSiteSettings(input: {
   googleAuthEnabled: boolean;
   registrationEnabled: boolean;
+  emailVerificationEnabled: boolean;
 }): Promise<void> {
   await connectDB();
   await SiteSetting.findOneAndUpdate(

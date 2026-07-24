@@ -126,5 +126,6 @@ export const settingsSchema = z.object({
   qrisImage: z.string().max(300),
   googleAuthEnabled: z.boolean(),
   registrationEnabled: z.boolean(),
+  emailVerificationEnabled: z.boolean(),
 });
 export type SettingsInput = z.infer<typeof settingsSchema>;

@@ -170,6 +170,7 @@ async function main() {
     key: "site",
     googleAuthEnabled: false,
     registrationEnabled: true,
+    emailVerificationEnabled: false,
   });
 
   console.log("→ Menanam halaman legal (S&K + Kebijakan Privasi)…");

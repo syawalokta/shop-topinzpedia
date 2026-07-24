@@ -45,6 +45,7 @@ export async function updateSettingsAction(
     await updateSiteSettings({
       googleAuthEnabled: parsed.data.googleAuthEnabled,
       registrationEnabled: parsed.data.registrationEnabled,
+      emailVerificationEnabled: parsed.data.emailVerificationEnabled,
     });
 
     revalidatePath("/admin/settings");

@@ -102,9 +102,10 @@ export async function registerAction(
       return { ok: false, error: result.error, captcha: freshCaptcha() };
     }
 
-    // Verifikasi email wajib bila SMTP dikonfigurasi;
-    // tanpa SMTP akun langsung diverifikasi (mode pengembangan).
-    if (isMailConfigured()) {
+    // Verifikasi email hanya bila fitur DIAKTIFKAN admin (default OFF)
+    // dan SMTP terpasang. Selain itu akun langsung terverifikasi dan
+    // user bisa langsung login.
+    if (settings.emailVerificationEnabled && isMailConfigured()) {
       await sendVerification(result.userId);
       return { ok: true, needVerify: true };
     }

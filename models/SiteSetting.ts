@@ -12,6 +12,8 @@ const SiteSettingSchema = new Schema(
     key: { type: String, default: "site", unique: true },
     googleAuthEnabled: { type: Boolean, default: false },
     registrationEnabled: { type: Boolean, default: true },
+    /** Wajib verifikasi email saat register (butuh SMTP). Default: OFF */
+    emailVerificationEnabled: { type: Boolean, default: false },
   },
   { timestamps: true }
 );

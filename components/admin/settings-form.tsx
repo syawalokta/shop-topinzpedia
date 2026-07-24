@@ -80,6 +80,9 @@ export function SettingsForm({ payment, site }: SettingsFormProps) {
   const [registrationEnabled, setRegistrationEnabled] = useState(
     site.registrationEnabled
   );
+  const [verifyEnabled, setVerifyEnabled] = useState(
+    site.emailVerificationEnabled
+  );
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -95,6 +98,7 @@ export function SettingsForm({ payment, site }: SettingsFormProps) {
         qrisImage,
         googleAuthEnabled: googleEnabled,
         registrationEnabled,
+        emailVerificationEnabled: verifyEnabled,
       });
 
       if (result.ok) {
@@ -201,6 +205,17 @@ export function SettingsForm({ payment, site }: SettingsFormProps) {
             description="Bila dimatikan, halaman daftar ditutup sementara."
             checked={registrationEnabled}
             onChange={setRegistrationEnabled}
+          />
+          <ToggleRow
+            label="Wajib Verifikasi Email"
+            description={
+              site.mailConfigured
+                ? "User baru harus klik tautan di email sebelum bisa login. Admin selalu dikecualikan."
+                : "Butuh konfigurasi SMTP (SMTP_HOST/USER/PASS) di server terlebih dahulu. Selama nonaktif, user baru langsung bisa login."
+            }
+            checked={verifyEnabled}
+            onChange={setVerifyEnabled}
+            disabled={!site.mailConfigured}
           />
           <ToggleRow
             label="Login dengan Google"
