@@ -41,10 +41,6 @@ const formSchema = z.object({
     const num = Number(value);
     return Number.isFinite(num) && num >= 0 && num <= 5;
   }, "Rating antara 0 sampai 5"),
-  sold: z.string().refine((value) => {
-    const num = Number(value);
-    return Number.isInteger(num) && num >= 0;
-  }, "Harus bilangan bulat ≥ 0"),
   description: z.string().min(10, "Deskripsi minimal 10 karakter"),
   featuresText: z.string().min(3, "Tulis minimal satu fitur"),
 });
@@ -78,7 +74,6 @@ export function ProductForm({ categories, product }: ProductFormProps) {
       banner: product?.banner ?? "",
       accent: product?.accent ?? "#2563eb",
       rating: String(product?.rating ?? 5),
-      sold: String(product?.sold ?? 0),
       description: product?.description ?? "",
       featuresText: product?.features.join("\n") ?? "",
     },
@@ -104,7 +99,6 @@ export function ProductForm({ categories, product }: ProductFormProps) {
       banner: values.banner,
       accent: values.accent,
       rating: Number(values.rating),
-      sold: Number(values.sold),
       description: values.description,
       features: values.featuresText
         .split("\n")
@@ -214,13 +208,6 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               setValue("logo", url, { shouldValidate: true, shouldDirty: true })
             }
           />
-          <Input
-            id="logo"
-            placeholder="atau isi path manual, mis. /brands/chatgpt.svg"
-            aria-invalid={Boolean(errors.logo)}
-            className="text-xs"
-            {...register("logo")}
-          />
           {fieldError(errors.logo?.message)}
         </div>
 
@@ -260,19 +247,11 @@ export function ProductForm({ categories, product }: ProductFormProps) {
             aria-invalid={Boolean(errors.rating)}
             {...register("rating")}
           />
+          <p className="text-xs text-muted-foreground">
+            Jumlah terjual tidak diinput manual — bertambah otomatis setiap
+            ada pembelian berhasil.
+          </p>
           {fieldError(errors.rating?.message)}
-        </div>
-
-        <div className="space-y-2">
-          <Label htmlFor="sold">Jumlah Terjual</Label>
-          <Input
-            id="sold"
-            type="number"
-            min={0}
-            aria-invalid={Boolean(errors.sold)}
-            {...register("sold")}
-          />
-          {fieldError(errors.sold?.message)}
         </div>
 
         <div className="space-y-2 md:col-span-2">
@@ -284,12 +263,9 @@ export function ProductForm({ categories, product }: ProductFormProps) {
               setValue("banner", url, { shouldDirty: true })
             }
           />
-          <Input
-            id="banner"
-            placeholder="Kosongkan untuk gradient otomatis dari warna aksen"
-            className="text-xs"
-            {...register("banner")}
-          />
+          <p className="text-xs text-muted-foreground">
+            Kosongkan untuk gradient otomatis dari warna aksen.
+          </p>
         </div>
 
         <div className="space-y-2 md:col-span-2">

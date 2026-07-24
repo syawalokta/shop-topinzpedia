@@ -15,10 +15,12 @@ import mongoose from "mongoose";
 
 import {
   Category,
+  Page,
   PaymentSetting,
   Product,
   SiteSetting,
   Stock,
+  Token,
   Topup,
   Transaction,
   User,
@@ -27,6 +29,14 @@ import {
   WalletTransaction,
 } from "../models";
 import { seedCategories, seedProducts } from "../lib/data/fallback-data";
+import {
+  PRIVACY_CONTENT,
+  PRIVACY_SLUG,
+  PRIVACY_TITLE,
+  TERMS_CONTENT,
+  TERMS_SLUG,
+  TERMS_TITLE,
+} from "../lib/legal-content";
 
 const MONGODB_URI =
   process.env.MONGODB_URI ?? "mongodb://127.0.0.1:27017/topinzpedia";
@@ -60,6 +70,8 @@ async function main() {
     WalletTransaction.deleteMany({}),
     PaymentSetting.deleteMany({}),
     SiteSetting.deleteMany({}),
+    Token.deleteMany({}),
+    Page.deleteMany({}),
   ]);
 
   console.log("→ Menanam kategori…");
@@ -120,6 +132,7 @@ async function main() {
     passwordHash: await bcrypt.hash(adminPassword, 10),
     role: "admin",
     provider: "credentials",
+    emailVerified: new Date(),
   });
   await Wallet.create({ userId: admin._id, balance: 0 });
 
@@ -130,6 +143,7 @@ async function main() {
     passwordHash: await bcrypt.hash("demo12345", 10),
     role: "user",
     provider: "credentials",
+    emailVerified: new Date(),
   });
   await Wallet.create({ userId: demo._id, balance: 200_000 });
   await WalletTransaction.create({
@@ -157,6 +171,12 @@ async function main() {
     googleAuthEnabled: false,
     registrationEnabled: true,
   });
+
+  console.log("→ Menanam halaman legal (S&K + Kebijakan Privasi)…");
+  await Page.insertMany([
+    { slug: TERMS_SLUG, title: TERMS_TITLE, content: TERMS_CONTENT },
+    { slug: PRIVACY_SLUG, title: PRIVACY_TITLE, content: PRIVACY_CONTENT },
+  ]);
 
   console.log(
     `✓ Seed selesai: ${categories.length} kategori, ${seedProducts.length} produk, ${variantCount} varian, ${stockCount} stok, 2 user`

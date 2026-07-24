@@ -1,15 +1,26 @@
 "use server";
 
+import { z } from "zod";
+
 import { signOut } from "@/auth";
 import { generateCaptcha, verifyCaptcha, type CaptchaChallenge } from "../captcha";
-import { isDbConfigured } from "../db";
+import { connectDB, isDbConfigured } from "../db";
+import {
+  requestPasswordReset,
+  resetPasswordWithToken,
+  sendVerification,
+} from "../services/account";
+import { isMailConfigured } from "../services/mail";
 import { getSiteSettings } from "../services/settings";
 import { registerUser } from "../services/users";
 import { registerSchema } from "../validations";
+import { User } from "../../models";
 
 export interface RegisterResult {
   ok: boolean;
   error?: string;
+  /** true bila user harus verifikasi email dulu sebelum login */
+  needVerify?: boolean;
   /** Captcha baru — dikirim ulang setiap kali gagal */
   captcha?: CaptchaChallenge;
 }
@@ -87,10 +98,23 @@ export async function registerAction(
 
   try {
     const result = await registerUser(parsed.data);
-    if (!result.ok) {
+    if (!result.ok || !result.userId) {
       return { ok: false, error: result.error, captcha: freshCaptcha() };
     }
-    return { ok: true };
+
+    // Verifikasi email wajib bila SMTP dikonfigurasi;
+    // tanpa SMTP akun langsung diverifikasi (mode pengembangan).
+    if (isMailConfigured()) {
+      await sendVerification(result.userId);
+      return { ok: true, needVerify: true };
+    }
+
+    await connectDB();
+    await User.updateOne(
+      { _id: result.userId },
+      { emailVerified: new Date() }
+    );
+    return { ok: true, needVerify: false };
   } catch (error) {
     console.error("[actions/auth-user] register gagal:", error);
     return {
@@ -98,6 +122,118 @@ export async function registerAction(
       error: "Terjadi kesalahan saat mendaftar.",
       captcha: freshCaptcha(),
     };
+  }
+}
+
+/** Kirim ulang email verifikasi (respons selalu generik — anti enumeration). */
+export async function resendVerificationAction(
+  identifier: string
+): Promise<{ ok: boolean; message: string }> {
+  const generic = {
+    ok: true,
+    message:
+      "Bila akun terdaftar dan belum terverifikasi, email verifikasi baru sudah dikirim. Cek inbox/spam.",
+  };
+
+  if (!isDbConfigured() || !isMailConfigured()) {
+    return {
+      ok: false,
+      message:
+        "Pengiriman email belum dikonfigurasi di server (SMTP). Hubungi admin.",
+    };
+  }
+
+  try {
+    await connectDB();
+    const value = identifier.toLowerCase().trim();
+    const user = await User.findOne({
+      $or: [{ email: value }, { username: value }],
+    }).select("_id emailVerified");
+    if (user && !user.emailVerified) {
+      await sendVerification(String(user._id));
+    }
+    return generic;
+  } catch (error) {
+    console.error("[actions/auth-user] resend gagal:", error);
+    return generic;
+  }
+}
+
+/** Minta tautan reset password via email. */
+export async function forgotPasswordAction(payload: {
+  email: string;
+  captchaToken: string;
+  captchaAnswer: string;
+}): Promise<{ ok: boolean; message: string; captcha?: CaptchaChallenge }> {
+  if (!verifyCaptcha(payload.captchaToken, payload.captchaAnswer)) {
+    return {
+      ok: false,
+      message: "Jawaban captcha salah atau kedaluwarsa.",
+      captcha: generateCaptcha(),
+    };
+  }
+
+  const parsed = z.email().safeParse(payload.email.trim());
+  if (!parsed.success) {
+    return {
+      ok: false,
+      message: "Format email tidak valid.",
+      captcha: generateCaptcha(),
+    };
+  }
+
+  if (!isDbConfigured() || !isMailConfigured()) {
+    return {
+      ok: false,
+      message:
+        "Fitur reset password membutuhkan konfigurasi email (SMTP) di server. Hubungi admin.",
+      captcha: generateCaptcha(),
+    };
+  }
+
+  try {
+    await requestPasswordReset(parsed.data);
+  } catch (error) {
+    console.error("[actions/auth-user] forgot gagal:", error);
+  }
+
+  // Respons generik — tidak membocorkan apakah email terdaftar
+  return {
+    ok: true,
+    message:
+      "Bila email terdaftar, tautan reset password sudah dikirim (berlaku 30 menit). Cek inbox/spam.",
+  };
+}
+
+/** Setel password baru memakai token dari email. */
+export async function resetPasswordAction(payload: {
+  token: string;
+  password: string;
+  confirmPassword: string;
+}): Promise<{ ok: boolean; error?: string }> {
+  if (payload.password !== payload.confirmPassword) {
+    return { ok: false, error: "Konfirmasi password tidak sama." };
+  }
+  const parsed = z
+    .string()
+    .min(8, "Password minimal 8 karakter")
+    .max(72)
+    .safeParse(payload.password);
+  if (!parsed.success) {
+    return {
+      ok: false,
+      error: parsed.error.issues[0]?.message ?? "Password tidak valid.",
+    };
+  }
+  if (!isDbConfigured()) {
+    return { ok: false, error: "Database belum dikonfigurasi." };
+  }
+
+  try {
+    return await resetPasswordWithToken(payload.token, parsed.data);
+  } catch (error) {
+    console.error("[actions/auth-user] reset gagal:", error);
+    return { ok: false, error: "Terjadi kesalahan saat mereset password." };
   }
 }
 

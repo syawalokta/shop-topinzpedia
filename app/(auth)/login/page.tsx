@@ -1,9 +1,15 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { ArrowLeft, CheckCircle2 } from "lucide-react";
+import {
+  ArrowLeft,
+  CheckCircle2,
+  MailCheck,
+  XCircle,
+} from "lucide-react";
 
 import { getSessionUser } from "@/lib/authz";
+import { generateCaptcha } from "@/lib/captcha";
 import { getSiteSettings } from "@/lib/services/settings";
 import { LoginForm } from "@/components/auth/login-form";
 import {
@@ -21,11 +27,42 @@ export const metadata: Metadata = {
 };
 
 interface LoginPageProps {
-  searchParams: Promise<{ callbackUrl?: string; registered?: string }>;
+  searchParams: Promise<{
+    callbackUrl?: string;
+    registered?: string;
+    verify?: string;
+    verified?: string;
+    verifyError?: string;
+    reset?: string;
+  }>;
+}
+
+function Banner({
+  tone,
+  icon: Icon,
+  children,
+}: {
+  tone: "success" | "error";
+  icon: typeof CheckCircle2;
+  children: React.ReactNode;
+}) {
+  return (
+    <div
+      role="status"
+      className={
+        tone === "success"
+          ? "mb-4 flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-sm leading-relaxed text-emerald-700 dark:text-emerald-400"
+          : "mb-4 flex items-start gap-2.5 rounded-xl border border-destructive/30 bg-destructive/10 p-3.5 text-sm leading-relaxed text-destructive"
+      }
+    >
+      <Icon className="mt-0.5 size-4 shrink-0" aria-hidden />
+      <span>{children}</span>
+    </div>
+  );
 }
 
 export default async function LoginPage({ searchParams }: LoginPageProps) {
-  const [{ callbackUrl, registered }, user, settings] = await Promise.all([
+  const [params, user, settings] = await Promise.all([
     searchParams,
     getSessionUser(),
     getSiteSettings(),
@@ -36,19 +73,42 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
 
   const googleEnabled = settings.googleAuthEnabled && settings.googleConfigured;
+  const captcha = generateCaptcha();
 
   return (
     <div className="w-full max-w-md">
-      {registered ? (
-        <div
-          role="status"
-          className="mb-4 flex items-start gap-2.5 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3.5 text-sm leading-relaxed text-emerald-700 dark:text-emerald-400"
-        >
-          <CheckCircle2 className="mt-0.5 size-4 shrink-0" aria-hidden />
+      {params.registered && params.verify ? (
+        <Banner tone="success" icon={MailCheck}>
+          Akun berhasil dibuat! Kami sudah mengirim <strong>email
+          verifikasi</strong> — klik tautan di dalamnya dulu, baru login di
+          sini. (Cek juga folder spam.)
+        </Banner>
+      ) : params.registered ? (
+        <Banner tone="success" icon={CheckCircle2}>
           Akun berhasil dibuat! Silakan login dengan email/username dan
           password yang barusan kamu daftarkan.
-        </div>
+        </Banner>
       ) : null}
+
+      {params.verified ? (
+        <Banner tone="success" icon={CheckCircle2}>
+          Email berhasil diverifikasi! Sekarang kamu bisa login ke dashboard.
+        </Banner>
+      ) : null}
+
+      {params.verifyError ? (
+        <Banner tone="error" icon={XCircle}>
+          Tautan verifikasi tidak valid atau sudah kedaluwarsa. Login lalu
+          gunakan tombol &ldquo;Kirim Ulang Email Verifikasi&rdquo;.
+        </Banner>
+      ) : null}
+
+      {params.reset ? (
+        <Banner tone="success" icon={CheckCircle2}>
+          Password berhasil direset! Silakan login dengan password barumu.
+        </Banner>
+      ) : null}
+
       <Card>
         <CardHeader>
           <CardTitle className="text-xl">Selamat datang kembali 👋</CardTitle>
@@ -58,7 +118,11 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <LoginForm googleEnabled={googleEnabled} callbackUrl={callbackUrl} />
+          <LoginForm
+            googleEnabled={googleEnabled}
+            callbackUrl={params.callbackUrl}
+            initialCaptcha={captcha}
+          />
         </CardContent>
       </Card>
 

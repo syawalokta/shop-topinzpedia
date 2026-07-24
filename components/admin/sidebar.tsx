@@ -5,6 +5,7 @@ import { usePathname } from "next/navigation";
 import {
   Boxes,
   ExternalLink,
+  FileText,
   HandCoins,
   LayoutDashboard,
   LogOut,
@@ -45,6 +46,7 @@ const NAV_ITEMS = [
     exact: false,
   },
   { href: "/admin/users", label: "Users", icon: Users, exact: false },
+  { href: "/admin/pages", label: "Halaman", icon: FileText, exact: false },
   {
     href: "/admin/settings",
     label: "Pengaturan",

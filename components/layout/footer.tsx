@@ -27,8 +27,8 @@ const helpLinks = [
 ];
 
 const legalLinks = [
-  { label: "Syarat & Ketentuan", href: "#" },
-  { label: "Kebijakan Privasi", href: "#" },
+  { label: "Syarat & Ketentuan", href: "/syarat-ketentuan" },
+  { label: "Kebijakan Privasi", href: "/kebijakan-privasi" },
 ];
 
 export function Footer() {

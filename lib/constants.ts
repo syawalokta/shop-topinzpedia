@@ -140,10 +140,6 @@ export const FAQS = [
     q: "Metode pembayaran apa saja yang tersedia?",
     a: "Kami menerima QRIS (semua e-wallet & m-banking), DANA, OVO, GoPay, ShopeePay, transfer bank (BCA, BRI, Mandiri), hingga pulsa. Pembayaran dikonfirmasi otomatis.",
   },
-  {
-    q: "Apakah bisa perpanjang setelah masa aktif habis?",
-    a: "Tentu! Kamu tinggal order ulang varian yang sama sebelum masa aktif berakhir, dan tim kami akan memperpanjang di akun yang sama bila memungkinkan. Admin juga akan mengingatkanmu menjelang masa aktif habis.",
-  },
 ];
 
 export const PAYMENT_METHODS = [

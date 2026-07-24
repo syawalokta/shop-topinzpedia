@@ -1,11 +1,26 @@
-import NextAuth from "next-auth";
+import NextAuth, { CredentialsSignin } from "next-auth";
 import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 
+import { verifyCaptcha } from "@/lib/captcha";
 import { connectDB } from "@/lib/db";
 import { getSiteSettings } from "@/lib/services/settings";
 import { User, Wallet } from "@/models";
+
+/**
+ * Error login dengan kode spesifik agar UI bisa menampilkan pesan
+ * yang tepat: captcha salah, akun terkunci, atau belum verifikasi.
+ */
+class LoginError extends CredentialsSignin {
+  constructor(code: "captcha" | "locked" | "unverified" | "invalid") {
+    super();
+    this.code = code;
+  }
+}
+
+const MAX_LOGIN_ATTEMPTS = 5;
+const LOCK_DURATION_MS = 5 * 60 * 1000; // 5 menit
 
 /**
  * Konfigurasi Auth.js (NextAuth v5).
@@ -28,36 +43,81 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
       credentials: {
         identifier: { label: "Email atau Username" },
         password: { label: "Password", type: "password" },
+        captchaToken: { label: "Captcha Token" },
+        captchaAnswer: { label: "Captcha Answer" },
       },
       async authorize(credentials) {
         const identifier = String(credentials?.identifier ?? "")
           .toLowerCase()
           .trim();
         const password = String(credentials?.password ?? "");
-        if (!identifier || !password) return null;
 
-        try {
-          await connectDB();
-          const user = await User.findOne({
-            $or: [{ email: identifier }, { username: identifier }],
-          });
-          if (!user?.passwordHash) return null;
-
-          const valid = await bcrypt.compare(password, user.passwordHash);
-          if (!valid) return null;
-
-          return {
-            id: String(user._id),
-            name: user.name,
-            email: user.email,
-            image: user.image,
-            role: user.role,
-            username: user.username,
-          };
-        } catch (error) {
-          console.error("[auth] authorize gagal:", error);
-          return null;
+        // 1. Captcha — tolak lebih awal sebelum menyentuh database (anti-spam)
+        if (
+          !verifyCaptcha(
+            String(credentials?.captchaToken ?? ""),
+            String(credentials?.captchaAnswer ?? "")
+          )
+        ) {
+          throw new LoginError("captcha");
         }
+
+        if (!identifier || !password) throw new LoginError("invalid");
+
+        await connectDB();
+        const user = await User.findOne({
+          $or: [{ email: identifier }, { username: identifier }],
+        });
+        if (!user?.passwordHash) throw new LoginError("invalid");
+
+        // 2. Rate limit: terkunci 5 menit setelah 5x salah
+        if (user.lockUntil && user.lockUntil.getTime() > Date.now()) {
+          throw new LoginError("locked");
+        }
+
+        // 3. Cek password
+        const valid = await bcrypt.compare(password, user.passwordHash);
+        if (!valid) {
+          const attempts = (user.loginAttempts ?? 0) + 1;
+          if (attempts >= MAX_LOGIN_ATTEMPTS) {
+            await User.updateOne(
+              { _id: user._id },
+              {
+                loginAttempts: 0,
+                lockUntil: new Date(Date.now() + LOCK_DURATION_MS),
+              }
+            );
+            throw new LoginError("locked");
+          }
+          await User.updateOne(
+            { _id: user._id },
+            { loginAttempts: attempts }
+          );
+          throw new LoginError("invalid");
+        }
+
+        // 4. Wajib verifikasi email dulu (dicek SETELAH password valid
+        //    agar tidak membocorkan status akun ke penebak password)
+        if (!user.emailVerified) {
+          throw new LoginError("unverified");
+        }
+
+        // 5. Sukses — reset counter
+        if (user.loginAttempts || user.lockUntil) {
+          await User.updateOne(
+            { _id: user._id },
+            { loginAttempts: 0, lockUntil: null }
+          );
+        }
+
+        return {
+          id: String(user._id),
+          name: user.name,
+          email: user.email,
+          image: user.image,
+          role: user.role,
+          username: user.username,
+        };
       },
     }),
     ...(googleConfigured ? [Google] : []),
@@ -96,6 +156,8 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
             provider: "google",
             image: user.image ?? "",
             role: "user",
+            // Email dari Google sudah terverifikasi oleh Google
+            emailVerified: new Date(),
           });
           await Wallet.updateOne(
             { userId: created._id },

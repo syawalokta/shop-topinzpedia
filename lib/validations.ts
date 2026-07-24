@@ -21,7 +21,6 @@ export const categorySchema = z.object({
     .string()
     .min(1, "Isi nama ikon Lucide, mis. bot / clapperboard")
     .max(40),
-  order: z.coerce.number().int("Urutan harus bilangan bulat").min(0),
 });
 export type CategoryInput = z.infer<typeof categorySchema>;
 
@@ -29,8 +28,22 @@ export const productSchema = z.object({
   name: z.string().min(3, "Nama minimal 3 karakter").max(80),
   slug: slugSchema,
   category: z.string().min(1, "Pilih kategori"),
-  logo: z.string().min(1, "Isi path logo, mis. /brands/chatgpt.svg").max(300),
-  banner: z.string().max(300).default(""),
+  logo: z
+    .string()
+    .min(1, "Upload logo atau isi URL/path gambar")
+    .max(500)
+    .refine(
+      (v) => v.startsWith("/") || /^https?:\/\/\S+$/i.test(v),
+      "Logo harus path lokal (/...) atau URL http(s)"
+    ),
+  banner: z
+    .string()
+    .max(500)
+    .refine(
+      (v) => v === "" || v.startsWith("/") || /^https?:\/\/\S+$/i.test(v),
+      "Banner harus kosong, path lokal (/...), atau URL http(s)"
+    )
+    .default(""),
   accent: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Format warna hex 6 digit, mis. #2563eb"),
@@ -43,7 +56,8 @@ export const productSchema = z.object({
     .max(12, "Maksimal 12 poin fitur")
     .default([]),
   rating: z.coerce.number().min(0, "Rating 0–5").max(5, "Rating 0–5"),
-  sold: z.coerce.number().int("Harus bilangan bulat").min(0),
+  // Catatan: `sold` sengaja TIDAK ada di sini — jumlah terjual
+  // bertambah otomatis saat transaksi berhasil, bukan input manual.
   status: z.enum(["active", "inactive"]),
 });
 export type ProductInput = z.infer<typeof productSchema>;

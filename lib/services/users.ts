@@ -24,7 +24,7 @@ export async function registerUser(input: {
   username: string;
   email: string;
   password: string;
-}): Promise<{ ok: boolean; error?: string }> {
+}): Promise<{ ok: boolean; error?: string; userId?: string }> {
   await connectDB();
 
   const email = input.email.toLowerCase().trim();
@@ -54,7 +54,7 @@ export async function registerUser(input: {
     { upsert: true }
   );
 
-  return { ok: true };
+  return { ok: true, userId: String(user._id) };
 }
 
 export async function adminListUsers(params: {

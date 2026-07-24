@@ -17,6 +17,7 @@ import type { CaptchaChallenge } from "@/lib/captcha";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 
 const registerFormSchema = z
   .object({
@@ -87,8 +88,13 @@ export function RegisterForm({ initialCaptcha }: RegisterFormProps) {
     }
 
     // Tanpa auto-login — arahkan ke halaman login agar user masuk manual.
-    toast.success("Akun berhasil dibuat! Silakan login.");
-    router.push("/login?registered=1");
+    if (result.needVerify) {
+      toast.success("Akun dibuat! Cek email kamu untuk verifikasi.");
+      router.push("/login?registered=1&verify=1");
+    } else {
+      toast.success("Akun berhasil dibuat! Silakan login.");
+      router.push("/login?registered=1");
+    }
   }
 
   const fieldError = (message?: string) =>
@@ -141,9 +147,8 @@ export function RegisterForm({ initialCaptcha }: RegisterFormProps) {
       <div className="grid gap-4 sm:grid-cols-2">
         <div className="space-y-2">
           <Label htmlFor="password">Password</Label>
-          <Input
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="new-password"
             placeholder="Min. 8 karakter"
             aria-invalid={Boolean(errors.password)}
@@ -153,9 +158,8 @@ export function RegisterForm({ initialCaptcha }: RegisterFormProps) {
         </div>
         <div className="space-y-2">
           <Label htmlFor="confirmPassword">Ulangi Password</Label>
-          <Input
+          <PasswordInput
             id="confirmPassword"
-            type="password"
             autoComplete="new-password"
             placeholder="Ketik ulang password"
             aria-invalid={Boolean(errors.confirmPassword)}
@@ -202,11 +206,19 @@ export function RegisterForm({ initialCaptcha }: RegisterFormProps) {
           />
           <span className="text-muted-foreground">
             Saya menyetujui{" "}
-            <Link href="#" className="font-medium text-primary hover:underline">
+            <Link
+              href="/syarat-ketentuan"
+              target="_blank"
+              className="font-medium text-primary hover:underline"
+            >
               Syarat &amp; Ketentuan
             </Link>{" "}
             serta{" "}
-            <Link href="#" className="font-medium text-primary hover:underline">
+            <Link
+              href="/kebijakan-privasi"
+              target="_blank"
+              className="font-medium text-primary hover:underline"
+            >
               Kebijakan Privasi
             </Link>{" "}
             TopinzPedia.

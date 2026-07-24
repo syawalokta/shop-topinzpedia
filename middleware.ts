@@ -40,7 +40,13 @@ export async function middleware(request: NextRequest) {
   if (token && !OBJECT_ID_RE.test(String(token.sub ?? ""))) {
     const response = NextResponse.redirect(loginUrl);
     for (const name of SESSION_COOKIES) {
-      response.cookies.delete(name);
+      response.cookies.set(name, "", {
+        path: "/",
+        maxAge: 0,
+        httpOnly: true,
+        sameSite: "lax",
+        secure: name.startsWith("__Secure-"),
+      });
     }
     return response;
   }

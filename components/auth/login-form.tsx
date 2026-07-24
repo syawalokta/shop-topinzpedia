@@ -3,63 +3,148 @@
 import { useState } from "react";
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2 } from "lucide-react";
+import { Loader2, MailWarning, RotateCcw, ShieldQuestion } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
+import {
+  refreshCaptchaAction,
+  resendVerificationAction,
+} from "@/lib/actions/auth-user";
+import type { CaptchaChallenge } from "@/lib/captcha";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Separator } from "@/components/ui/separator";
 
 const loginSchema = z.object({
   identifier: z.string().min(3, "Isi email atau username"),
   password: z.string().min(1, "Isi password"),
+  captchaAnswer: z.string().min(1, "Jawab captcha terlebih dahulu"),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
 
+const ERROR_MESSAGES: Record<string, string> = {
+  captcha: "Jawaban captcha salah atau kedaluwarsa. Coba lagi.",
+  locked:
+    "Terlalu banyak percobaan gagal. Akun dikunci sementara — coba lagi dalam 5 menit.",
+  invalid: "Email/username atau password salah.",
+};
+
 interface LoginFormProps {
   googleEnabled: boolean;
   callbackUrl?: string;
+  initialCaptcha: CaptchaChallenge;
 }
 
-export function LoginForm({ googleEnabled, callbackUrl }: LoginFormProps) {
+export function LoginForm({
+  googleEnabled,
+  callbackUrl,
+  initialCaptcha,
+}: LoginFormProps) {
   const [googleLoading, setGoogleLoading] = useState(false);
-  const target = callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/dashboard";
+  const [captcha, setCaptcha] = useState(initialCaptcha);
+  const [unverified, setUnverified] = useState(false);
+  const [resending, setResending] = useState(false);
+  const target =
+    callbackUrl && callbackUrl.startsWith("/") ? callbackUrl : "/dashboard";
 
   const {
     register,
     handleSubmit,
+    getValues,
+    setValue,
     formState: { errors, isSubmitting },
-  } = useForm<LoginValues>({ resolver: zodResolver(loginSchema) });
+  } = useForm<LoginValues>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: { captchaAnswer: "" },
+  });
+
+  async function refreshCaptcha() {
+    setCaptcha(await refreshCaptchaAction());
+    setValue("captchaAnswer", "");
+  }
 
   async function onSubmit(values: LoginValues) {
+    setUnverified(false);
     const result = await signIn("credentials", {
       identifier: values.identifier,
       password: values.password,
+      captchaToken: captcha.token,
+      captchaAnswer: values.captchaAnswer,
       redirect: false,
     });
 
     if (result?.error) {
-      toast.error(
-        result.error === "Configuration"
-          ? "Konfigurasi auth server belum lengkap (cek AUTH_SECRET di environment)."
-          : "Email/username atau password salah."
-      );
+      const code = (result as { code?: string }).code ?? "invalid";
+      if (code === "unverified") {
+        setUnverified(true);
+        toast.error(
+          "Akun ini belum diverifikasi. Silakan cek email verifikasi untuk login ke dashboard."
+        );
+      } else {
+        toast.error(
+          result.error === "Configuration"
+            ? "Konfigurasi auth server belum lengkap (cek AUTH_SECRET di environment)."
+            : (ERROR_MESSAGES[code] ?? ERROR_MESSAGES.invalid)
+        );
+      }
+      await refreshCaptcha();
       return;
     }
 
     toast.success("Berhasil masuk. Selamat datang kembali!");
-    // Navigasi penuh (bukan client-side) agar cookie sesi pasti
-    // terbaca middleware — lebih tahan banting di berbagai hosting.
+    // Navigasi penuh agar cookie sesi pasti terbaca middleware
     window.location.assign(target);
+  }
+
+  async function handleResend() {
+    const identifier = getValues("identifier");
+    if (!identifier) {
+      toast.error("Isi email/username dulu di form.");
+      return;
+    }
+    setResending(true);
+    try {
+      const result = await resendVerificationAction(identifier);
+      (result.ok ? toast.success : toast.error)(result.message);
+    } finally {
+      setResending(false);
+    }
   }
 
   return (
     <div className="space-y-4">
+      {unverified ? (
+        <div
+          role="alert"
+          className="space-y-2 rounded-xl border border-amber-500/30 bg-amber-500/10 p-3.5 text-xs leading-relaxed text-amber-700 dark:text-amber-400"
+        >
+          <p className="flex items-start gap-2">
+            <MailWarning className="mt-0.5 size-4 shrink-0" aria-hidden />
+            Akun ini belum diverifikasi. Silakan cek email verifikasi (termasuk
+            folder spam) untuk bisa login ke dashboard.
+          </p>
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            className="h-7 rounded-full bg-card text-xs"
+            disabled={resending}
+            onClick={handleResend}
+          >
+            {resending ? (
+              <Loader2 className="size-3 animate-spin" />
+            ) : null}
+            Kirim Ulang Email Verifikasi
+          </Button>
+        </div>
+      ) : null}
+
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-4" noValidate>
         <div className="space-y-2">
           <Label htmlFor="identifier">Email atau Username</Label>
@@ -78,10 +163,17 @@ export function LoginForm({ googleEnabled, callbackUrl }: LoginFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="password">Password</Label>
-          <Input
+          <div className="flex items-center justify-between">
+            <Label htmlFor="password">Password</Label>
+            <Link
+              href="/forgot-password"
+              className="text-xs font-medium text-primary transition-colors hover:text-secondary"
+            >
+              Lupa password?
+            </Link>
+          </div>
+          <PasswordInput
             id="password"
-            type="password"
             autoComplete="current-password"
             placeholder="••••••••"
             aria-invalid={Boolean(errors.password)}
@@ -90,6 +182,38 @@ export function LoginForm({ googleEnabled, callbackUrl }: LoginFormProps) {
           {errors.password ? (
             <p role="alert" className="text-xs font-medium text-destructive">
               {errors.password.message}
+            </p>
+          ) : null}
+        </div>
+
+        {/* Captcha anti-spam */}
+        <div className="space-y-2 rounded-xl border bg-muted/40 p-3.5">
+          <Label htmlFor="login-captcha" className="gap-1.5">
+            <ShieldQuestion className="size-4 text-primary" aria-hidden />
+            Captcha: berapa hasil {captcha.question}?
+          </Label>
+          <div className="flex items-center gap-2">
+            <Input
+              id="login-captcha"
+              inputMode="numeric"
+              placeholder="Jawaban"
+              className="bg-card"
+              aria-invalid={Boolean(errors.captchaAnswer)}
+              {...register("captchaAnswer")}
+            />
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              onClick={refreshCaptcha}
+              aria-label="Ganti soal captcha"
+            >
+              <RotateCcw className="size-4" />
+            </Button>
+          </div>
+          {errors.captchaAnswer ? (
+            <p role="alert" className="text-xs font-medium text-destructive">
+              {errors.captchaAnswer.message}
             </p>
           ) : null}
         </div>

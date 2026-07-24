@@ -21,6 +21,7 @@ import {
 import { DataToolbar } from "@/components/admin/data-toolbar";
 import { DbNotice } from "@/components/admin/db-notice";
 import { DeleteButton } from "@/components/admin/delete-button";
+import { VariantDialog } from "@/components/admin/variant-dialog";
 import { PaginationNav } from "@/components/shared/pagination-nav";
 import { StatusBadge } from "@/components/shared/status-badge";
 
@@ -43,7 +44,7 @@ export default async function AdminProductsPage({
   const dbReady = isDbConfigured();
   const params = await searchParams;
 
-  const [result, categories] = dbReady
+  const [result, categories, allProducts] = dbReady
     ? await Promise.all([
         adminListProducts({
           q: params.q,
@@ -52,8 +53,9 @@ export default async function AdminProductsPage({
           page: parsePage(params.page),
         }),
         adminListCategories(),
+        adminListProducts({ perPage: 200 }),
       ])
-    : [null, []];
+    : [null, [], null];
 
   return (
     <>
@@ -68,12 +70,28 @@ export default async function AdminProductsPage({
               : "Hubungkan database untuk mengelola produk."}
           </p>
         </div>
-        <Button asChild size="sm" className="rounded-full">
-          <Link href="/admin/products/new">
-            <Plus className="size-4" />
-            Tambah Produk
-          </Link>
-        </Button>
+        <div className="flex flex-wrap gap-2">
+          {allProducts ? (
+            <VariantDialog
+              products={allProducts.items.map((p) => ({
+                id: p.id,
+                name: p.name,
+              }))}
+              trigger={
+                <Button size="sm" variant="outline" className="rounded-full">
+                  <Layers className="size-4" />
+                  Tambah Varian
+                </Button>
+              }
+            />
+          ) : null}
+          <Button asChild size="sm" className="rounded-full">
+            <Link href="/admin/products/new">
+              <Plus className="size-4" />
+              Tambah Produk
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {dbReady ? (

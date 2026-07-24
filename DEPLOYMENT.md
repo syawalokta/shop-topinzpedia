@@ -28,6 +28,7 @@ Panduan instalasi production untuk **Vercel**, **Railway**, dan **VPS** — term
 | `NEXT_PUBLIC_WHATSAPP` | ✅ | Nomor WA admin tanpa `+`, mis. `62812xxxx` |
 | `SEED_ADMIN_PASSWORD` | Disarankan | Password akun admin saat seed |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Opsional | Untuk Login Google |
+| `SMTP_HOST/PORT/USER/PASS`, `EMAIL_FROM` | Disarankan | Verifikasi email & reset password. Tanpa ini: akun baru auto-verified, reset password nonaktif |
 
 > ⚠️ **Gejala `AUTH_SECRET` belum diset:** register berhasil tapi login gagal/stuck, halaman `/login` blank, atau error "Configuration". Set variabelnya lalu **redeploy/restart**.
 

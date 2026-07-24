@@ -30,10 +30,6 @@ const formSchema = z.object({
   name: z.string().min(2, "Nama minimal 2 karakter").max(40),
   slug: slugSchema,
   icon: z.string().min(1, "Isi nama ikon Lucide, mis. bot").max(40),
-  order: z.string().refine((value) => {
-    const num = Number(value);
-    return Number.isInteger(num) && num >= 0;
-  }, "Harus bilangan bulat ≥ 0"),
 });
 
 type CategoryFormValues = z.infer<typeof formSchema>;
@@ -62,7 +58,6 @@ export function CategoryDialog({ category, trigger }: CategoryDialogProps) {
       name: category?.name ?? "",
       slug: category?.slug ?? "",
       icon: category?.icon ?? "sparkles",
-      order: String(category?.order ?? 0),
     },
   });
 
@@ -73,7 +68,6 @@ export function CategoryDialog({ category, trigger }: CategoryDialogProps) {
       name: category?.name ?? "",
       slug: category?.slug ?? "",
       icon: category?.icon ?? "sparkles",
-      order: String(category?.order ?? 0),
     });
   }, [open, category, reset]);
 
@@ -89,7 +83,6 @@ export function CategoryDialog({ category, trigger }: CategoryDialogProps) {
       name: values.name,
       slug: values.slug,
       icon: values.icon,
-      order: Number(values.order),
     };
 
     const result = category
@@ -147,28 +140,18 @@ export function CategoryDialog({ category, trigger }: CategoryDialogProps) {
             {fieldError(errors.name?.message)}
           </div>
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="cat-slug">Slug</Label>
-              <Input
-                id="cat-slug"
-                placeholder="music"
-                aria-invalid={Boolean(errors.slug)}
-                {...register("slug")}
-              />
-              {fieldError(errors.slug?.message)}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="cat-order">Urutan</Label>
-              <Input
-                id="cat-order"
-                type="number"
-                min={0}
-                aria-invalid={Boolean(errors.order)}
-                {...register("order")}
-              />
-              {fieldError(errors.order?.message)}
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="cat-slug">Slug</Label>
+            <Input
+              id="cat-slug"
+              placeholder="music"
+              aria-invalid={Boolean(errors.slug)}
+              {...register("slug")}
+            />
+            <p className="text-xs text-muted-foreground">
+              Urutan tampil diatur otomatis (kategori baru di posisi terakhir).
+            </p>
+            {fieldError(errors.slug?.message)}
           </div>
 
           <div className="space-y-2">

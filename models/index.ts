@@ -13,6 +13,8 @@ export { default as Topup } from "./Topup";
 export { default as Stock } from "./Stock";
 export { default as PaymentSetting } from "./PaymentSetting";
 export { default as SiteSetting } from "./SiteSetting";
+export { default as Token } from "./Token";
+export { default as Page } from "./Page";
 
 export type { CategoryDoc } from "./Category";
 export type { ProductDoc } from "./Product";

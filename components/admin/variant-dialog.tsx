@@ -48,19 +48,25 @@ const formSchema = z.object({
 type VariantFormValues = z.infer<typeof formSchema>;
 
 interface VariantDialogProps {
-  productId: string;
+  /** Isi saat dipanggil dari halaman varian sebuah produk */
+  productId?: string;
+  /** Isi untuk mode global: user memilih produk terlebih dahulu */
+  products?: { id: string; name: string }[];
   variant?: AdminVariantRow;
   trigger: React.ReactNode;
 }
 
 export function VariantDialog({
   productId,
+  products,
   variant,
   trigger,
 }: VariantDialogProps) {
   const router = useRouter();
   const [open, setOpen] = useState(false);
+  const [productChoice, setProductChoice] = useState(productId ?? "");
   const isEdit = Boolean(variant);
+  const needProductPicker = !productId && !isEdit;
 
   const toDefaults = (): VariantFormValues => ({
     name: variant?.name ?? "",
@@ -99,9 +105,15 @@ export function VariantDialog({
       active: values.active === "true",
     };
 
+    const targetProductId = productId ?? productChoice;
+    if (!variant && !targetProductId) {
+      toast.error("Pilih produk terlebih dahulu.");
+      return;
+    }
+
     const result = variant
       ? await updateVariant(variant.id, payload)
-      : await createVariant(productId, payload);
+      : await createVariant(targetProductId, payload);
 
     if (result.ok) {
       toast.success(
@@ -139,6 +151,28 @@ export function VariantDialog({
           noValidate
           className="space-y-4"
         >
+          {needProductPicker && products ? (
+            <div className="space-y-2">
+              <Label htmlFor="var-product">Pilih Produk</Label>
+              <Select value={productChoice} onValueChange={setProductChoice}>
+                <SelectTrigger id="var-product">
+                  <SelectValue placeholder="Pilih produk tujuan" />
+                </SelectTrigger>
+                <SelectContent>
+                  {products.map((product) => (
+                    <SelectItem key={product.id} value={product.id}>
+                      {product.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                Varian berfungsi sebagai plan/paket — satu produk bisa punya
+                banyak varian agar user mudah memilih.
+              </p>
+            </div>
+          ) : null}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="space-y-2">
               <Label htmlFor="var-name">Nama Varian</Label>

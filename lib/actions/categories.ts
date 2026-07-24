@@ -50,7 +50,13 @@ export async function createCategory(
       };
     }
 
-    await Category.create(parsed.data);
+    // Urutan otomatis: lanjutkan dari urutan terbesar
+    const last = await Category.findOne()
+      .sort({ order: -1 })
+      .select("order")
+      .lean();
+    await Category.create({ ...parsed.data, order: (last?.order ?? 0) + 1 });
+
     revalidateCategoryPages();
     return { ok: true };
   } catch (error) {
