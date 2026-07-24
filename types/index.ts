@@ -59,3 +59,9 @@ export interface ProductDTO {
 export interface ProductDetail extends ProductDTO {
   variants: VariantDTO[];
 }
+
+/** Hasil standar dari Server Action mutasi (CRUD admin) */
+export interface ActionResult {
+  ok: boolean;
+  error?: string;
+}

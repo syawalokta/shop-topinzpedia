@@ -31,3 +31,23 @@ export function buildWhatsAppLink(phone: string, message: string): string {
 export function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
+
+/** Format tanggal ringkas Indonesia — mis. "24 Jul 2026" */
+export function formatDate(value: string | Date): string {
+  return new Intl.DateTimeFormat("id-ID", {
+    day: "numeric",
+    month: "short",
+    year: "numeric",
+  }).format(new Date(value));
+}
+
+/** Ubah teks bebas menjadi slug URL — mis. "ChatGPT Plus" -> "chatgpt-plus" */
+export function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .trim()
+    .replace(/[^a-z0-9\s-]/g, "")
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
