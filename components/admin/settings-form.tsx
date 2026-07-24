@@ -76,6 +76,11 @@ export function SettingsForm({ payment, site }: SettingsFormProps) {
   );
   const [qrisEnabled, setQrisEnabled] = useState(payment.qris.enabled);
   const [qrisImage, setQrisImage] = useState(payment.qris.qrImage);
+  const [qrisPublicId, setQrisPublicId] = useState(payment.qris.qrisPublicId);
+  const [landingUrl, setLandingUrl] = useState(site.landingBanner.url);
+  const [landingPublicId, setLandingPublicId] = useState(
+    site.landingBanner.publicId
+  );
   const [googleEnabled, setGoogleEnabled] = useState(site.googleAuthEnabled);
   const [registrationEnabled, setRegistrationEnabled] = useState(
     site.registrationEnabled
@@ -96,9 +101,12 @@ export function SettingsForm({ payment, site }: SettingsFormProps) {
         accountName,
         qrisEnabled,
         qrisImage,
+        qrisPublicId,
         googleAuthEnabled: googleEnabled,
         registrationEnabled,
         emailVerificationEnabled: verifyEnabled,
+        landingBannerUrl: landingUrl,
+        landingBannerPublicId: landingPublicId,
       });
 
       if (result.ok) {
@@ -185,7 +193,11 @@ export function SettingsForm({ payment, site }: SettingsFormProps) {
               <ImageUpload
                 kind="qris"
                 value={qrisImage}
-                onChange={setQrisImage}
+                publicId={qrisPublicId}
+                onChange={(url, pid) => {
+                  setQrisImage(url);
+                  setQrisPublicId(pid);
+                }}
               />
             </div>
           ) : null}
@@ -227,6 +239,26 @@ export function SettingsForm({ payment, site }: SettingsFormProps) {
             checked={googleEnabled}
             onChange={setGoogleEnabled}
             disabled={!site.googleConfigured}
+          />
+        </div>
+      </section>
+
+      {/* Landing page */}
+      <section className="rounded-lg border bg-card p-5 shadow-soft md:p-6">
+        <h2 className="font-heading text-base font-semibold">Landing Page</h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Banner promo opsional — tampil di bawah hero landing page bila diisi.
+        </p>
+        <div className="mt-4 rounded-xl border bg-muted/30 p-4">
+          <Label className="mb-2 block">Banner Landing</Label>
+          <ImageUpload
+            kind="landing"
+            value={landingUrl}
+            publicId={landingPublicId}
+            onChange={(url, pid) => {
+              setLandingUrl(url);
+              setLandingPublicId(pid);
+            }}
           />
         </div>
       </section>

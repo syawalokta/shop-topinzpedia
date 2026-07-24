@@ -5,8 +5,9 @@ import { Types } from "mongoose";
 
 import { connectDB, isDbConfigured } from "../db";
 import { getAdminSession } from "../authz";
+import { getStorage } from "../storage";
 import { productSchema, type ProductInput } from "../validations";
-import { Category, Product, Variant } from "../../models";
+import { Category, Product, Stock, Variant } from "../../models";
 import type { ActionResult } from "../../types";
 
 async function guard(): Promise<string | null> {
@@ -117,6 +118,18 @@ export async function updateProduct(
     });
     if (!previous) return { ok: false, error: "Produk tidak ditemukan." };
 
+    // Replace image: hapus file lama dari storage agar tidak orphan
+    const storage = getStorage();
+    if (previous.logoPublicId && previous.logoPublicId !== parsed.data.logoPublicId) {
+      await storage.delete(previous.logoPublicId);
+    }
+    if (
+      previous.bannerPublicId &&
+      previous.bannerPublicId !== parsed.data.bannerPublicId
+    ) {
+      await storage.delete(previous.bannerPublicId);
+    }
+
     // Revalidasi slug lama & baru (bila slug berubah)
     revalidateProductPages(previous.slug, parsed.data.slug);
     return { ok: true };
@@ -140,8 +153,17 @@ export async function deleteProduct(id: string): Promise<ActionResult> {
     const deleted = await Product.findByIdAndDelete(id);
     if (!deleted) return { ok: false, error: "Produk tidak ditemukan." };
 
-    // Ikut bersihkan seluruh varian milik produk ini
+    // Ikut bersihkan varian + stok milik produk ini
+    const variantIds = (
+      await Variant.find({ productId: deleted._id }).select("_id").lean()
+    ).map((v) => v._id);
+    await Stock.deleteMany({ variantId: { $in: variantIds } });
     await Variant.deleteMany({ productId: deleted._id });
+
+    // Hapus gambar dari storage (Cloudinary)
+    const storage = getStorage();
+    if (deleted.logoPublicId) await storage.delete(deleted.logoPublicId);
+    if (deleted.bannerPublicId) await storage.delete(deleted.bannerPublicId);
 
     revalidateProductPages(deleted.slug);
     return { ok: true };

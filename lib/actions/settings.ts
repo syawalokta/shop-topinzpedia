@@ -4,7 +4,10 @@ import { revalidatePath } from "next/cache";
 
 import { getAdminSession } from "../authz";
 import { isDbConfigured } from "../db";
+import { getStorage } from "../storage";
 import {
+  getPaymentSettings,
+  getSiteSettings,
   updatePaymentSettings,
   updateSiteSettings,
 } from "../services/settings";
@@ -29,6 +32,25 @@ export async function updateSettingsAction(
   }
 
   try {
+    // Bandingkan gambar lama vs baru — hapus file lama agar tidak orphan
+    const [oldPayment, oldSite] = await Promise.all([
+      getPaymentSettings(),
+      getSiteSettings(),
+    ]);
+    const storage = getStorage();
+    if (
+      oldPayment.qris.qrisPublicId &&
+      oldPayment.qris.qrisPublicId !== parsed.data.qrisPublicId
+    ) {
+      await storage.delete(oldPayment.qris.qrisPublicId);
+    }
+    if (
+      oldSite.landingBanner.publicId &&
+      oldSite.landingBanner.publicId !== parsed.data.landingBannerPublicId
+    ) {
+      await storage.delete(oldSite.landingBanner.publicId);
+    }
+
     await updatePaymentSettings({
       wallet: { enabled: parsed.data.walletEnabled },
       manualTransfer: {
@@ -40,13 +62,19 @@ export async function updateSettingsAction(
       qris: {
         enabled: parsed.data.qrisEnabled,
         qrImage: parsed.data.qrisImage,
+        qrisPublicId: parsed.data.qrisPublicId,
       },
     });
     await updateSiteSettings({
       googleAuthEnabled: parsed.data.googleAuthEnabled,
       registrationEnabled: parsed.data.registrationEnabled,
       emailVerificationEnabled: parsed.data.emailVerificationEnabled,
+      landingBanner: {
+        url: parsed.data.landingBannerUrl,
+        publicId: parsed.data.landingBannerPublicId,
+      },
     });
+    revalidatePath("/");
 
     revalidatePath("/admin/settings");
     revalidatePath("/dashboard/topup");

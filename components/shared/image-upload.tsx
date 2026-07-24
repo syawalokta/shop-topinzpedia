@@ -1,21 +1,30 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { ImagePlus, Link2, Loader2 } from "lucide-react";
+import { ImagePlus, Link2, Loader2, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  uploadAdminImageAction,
-  type UploadKind,
-} from "@/lib/actions/uploads";
+import { deleteImageAction, uploadImageAction } from "@/lib/actions/uploads";
+import type { UploadKind } from "@/lib/storage/StorageService";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface ImageUploadProps {
   kind: UploadKind;
   value: string;
-  onChange: (url: string) => void;
+  publicId?: string;
+  onChange: (url: string, publicId: string) => void;
   className?: string;
 }
 
@@ -24,24 +33,23 @@ function isValidImageRef(value: string): boolean {
 }
 
 /**
- * Input gambar dua mode:
- * - Upload file (storage layer lokal — maks. 2MB)
- * - Pakai URL (centang "Pakai URL" lalu tempel tautan gambar)
+ * Uploader gambar reusable (semua upload lewat StorageService/Cloudinary):
+ * upload file ATAU pakai URL, preview, replace (upload ulang otomatis
+ * menghapus file lama saat disimpan), dan delete dengan konfirmasi.
  */
 export function ImageUpload({
   kind,
   value,
+  publicId = "",
   onChange,
   className,
 }: ImageUploadProps) {
   const inputRef = useRef<HTMLInputElement>(null);
   const [uploading, setUploading] = useState(false);
-  const [useUrl, setUseUrl] = useState(
-    Boolean(value && /^https?:\/\//i.test(value))
-  );
-  const [urlDraft, setUrlDraft] = useState(
-    /^https?:\/\//i.test(value) ? value : ""
-  );
+  const [deleting, setDeleting] = useState(false);
+  const [deleteOpen, setDeleteOpen] = useState(false);
+  const [useUrl, setUseUrl] = useState(false);
+  const [urlDraft, setUrlDraft] = useState("");
 
   async function handleFile(file: File | undefined) {
     if (!file) return;
@@ -50,9 +58,9 @@ export function ImageUpload({
       const formData = new FormData();
       formData.set("file", file);
       formData.set("kind", kind);
-      const result = await uploadAdminImageAction(formData);
+      const result = await uploadImageAction(formData);
       if (result.ok) {
-        onChange(result.url);
+        onChange(result.url, result.publicId);
         toast.success("Gambar berhasil diunggah.");
       } else {
         toast.error(result.error);
@@ -71,16 +79,35 @@ export function ImageUpload({
       toast.error("URL harus diawali http:// atau https://");
       return;
     }
-    onChange(trimmed);
+    onChange(trimmed, ""); // URL eksternal — tanpa publicId storage
+    setUrlDraft("");
     toast.success("URL gambar dipakai.");
   }
 
+  async function handleDelete() {
+    setDeleting(true);
+    try {
+      if (publicId) {
+        const result = await deleteImageAction(publicId, kind);
+        if (!result.ok) {
+          toast.error(result.error ?? "Gagal menghapus gambar.");
+          return;
+        }
+      }
+      onChange("", "");
+      setDeleteOpen(false);
+      toast.success("Gambar dihapus.");
+    } finally {
+      setDeleting(false);
+    }
+  }
+
   return (
-    <div className={cn("space-y-2.5", className)}>
-      <div className="flex items-center gap-3">
+    <div className={cn("min-w-0 space-y-2.5", className)}>
+      <div className="flex min-w-0 items-center gap-3">
         <span className="grid size-12 shrink-0 place-items-center overflow-hidden rounded-lg border bg-muted/50">
           {value ? (
-            // Path dinamis (upload lokal / URL eksternal) — pakai img biasa
+            // Sumber dinamis (Cloudinary/lokal/eksternal) — pakai img biasa
             // eslint-disable-next-line @next/next/no-img-element
             <img
               src={value}
@@ -96,18 +123,19 @@ export function ImageUpload({
 
         <div className="min-w-0 flex-1">
           {useUrl ? (
-            <div className="flex items-center gap-2">
+            <div className="flex min-w-0 items-center gap-2">
               <Input
                 value={urlDraft}
                 onChange={(event) => setUrlDraft(event.target.value)}
                 placeholder="https://contoh.com/gambar.png"
-                className="h-9 text-xs"
+                className="h-9 min-w-0 flex-1 text-xs"
                 aria-label="URL gambar"
               />
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                className="shrink-0"
                 onClick={applyUrl}
               >
                 <Link2 className="size-3.5" />
@@ -115,7 +143,7 @@ export function ImageUpload({
               </Button>
             </div>
           ) : (
-            <>
+            <div className="flex min-w-0 flex-wrap items-center gap-2">
               <input
                 ref={inputRef}
                 type="file"
@@ -142,17 +170,61 @@ export function ImageUpload({
                   </>
                 )}
               </Button>
-            </>
+
+              {value ? (
+                <Dialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+                  <DialogTrigger asChild>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="shrink-0 text-destructive hover:bg-destructive/10 hover:text-destructive"
+                    >
+                      <Trash2 className="size-3.5" />
+                      Hapus
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-md">
+                    <DialogHeader>
+                      <DialogTitle>Hapus gambar ini?</DialogTitle>
+                      <DialogDescription>
+                        Gambar akan dihapus dari penyimpanan (Cloudinary).
+                        Tindakan ini tidak bisa dibatalkan.
+                      </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                      <DialogClose asChild>
+                        <Button variant="outline" disabled={deleting}>
+                          Batal
+                        </Button>
+                      </DialogClose>
+                      <Button
+                        variant="destructive"
+                        onClick={handleDelete}
+                        disabled={deleting}
+                      >
+                        {deleting ? (
+                          <Loader2 className="size-4 animate-spin" />
+                        ) : (
+                          <Trash2 className="size-4" />
+                        )}
+                        Ya, Hapus
+                      </Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
+              ) : null}
+            </div>
           )}
           {value ? (
-            <p className="mt-1 truncate text-xs text-muted-foreground">
+            <p className="mt-1 max-w-full truncate break-all text-xs text-muted-foreground">
               {value}
             </p>
           ) : (
             <p className="mt-1 text-xs text-muted-foreground">
               {useUrl
                 ? "Tempel tautan gambar lalu klik Pakai"
-                : "PNG, JPG, WebP — maks. 2MB"}
+                : "JPG, PNG, WebP — maks. 5MB"}
             </p>
           )}
         </div>

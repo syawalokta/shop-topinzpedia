@@ -9,10 +9,12 @@ export default function AdminDashboardLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <div className="min-h-svh bg-background lg:pl-60">
+    <div className="min-h-svh overflow-x-clip bg-background lg:pl-60">
       <AdminSidebar />
       <AdminTopbar />
-      <main className="mx-auto w-full max-w-6xl p-4 md:p-8">{children}</main>
+      <main className="mx-auto w-full min-w-0 max-w-6xl p-4 md:p-8">
+        {children}
+      </main>
     </div>
   );
 }

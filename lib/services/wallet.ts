@@ -23,7 +23,7 @@ export async function getOrCreateWallet(
   const doc = await Wallet.findOneAndUpdate(
     { userId: new Types.ObjectId(userId) },
     { $setOnInsert: { balance: 0 } },
-    { upsert: true, new: true }
+    { upsert: true, returnDocument: "after" }
   ).lean();
   return { balance: doc?.balance ?? 0 };
 }
@@ -64,7 +64,7 @@ export async function debitWalletIfSufficient(
   const updated = await Wallet.findOneAndUpdate(
     { userId: new Types.ObjectId(userId), balance: { $gte: amount } },
     { $inc: { balance: -amount } },
-    { new: true }
+    { returnDocument: "after" }
   );
   if (!updated) return false;
 

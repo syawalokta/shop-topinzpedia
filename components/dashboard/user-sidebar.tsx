@@ -8,6 +8,7 @@ import {
   LogOut,
   Menu,
   ReceiptText,
+  Settings,
   ShoppingBag,
   Wallet,
   Zap,
@@ -35,6 +36,12 @@ const NAV_ITEMS = [
     href: "/dashboard/transactions",
     label: "Transaksi",
     icon: ReceiptText,
+    exact: false,
+  },
+  {
+    href: "/dashboard/settings",
+    label: "Settings",
+    icon: Settings,
     exact: false,
   },
 ];

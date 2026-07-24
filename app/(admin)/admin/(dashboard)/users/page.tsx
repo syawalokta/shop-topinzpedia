@@ -14,6 +14,7 @@ import {
 } from "@/components/ui/table";
 import { DataToolbar } from "@/components/admin/data-toolbar";
 import { DbNotice } from "@/components/admin/db-notice";
+import { UserEditDialog } from "@/components/admin/user-edit-dialog";
 import { UserRoleDialog } from "@/components/admin/user-role-dialog";
 import { PaginationNav } from "@/components/shared/pagination-nav";
 import { StatusBadge } from "@/components/shared/status-badge";
@@ -131,7 +132,8 @@ export default async function AdminUsersPage({
                       {formatDate(user.createdAt)}
                     </TableCell>
                     <TableCell>
-                      <div className="flex justify-end">
+                      <div className="flex items-center justify-end gap-0.5">
+                        <UserEditDialog user={user} />
                         <UserRoleDialog
                           user={{
                             id: user.id,

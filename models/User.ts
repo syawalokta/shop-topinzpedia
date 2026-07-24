@@ -43,6 +43,14 @@ const UserSchema = new Schema(
       default: "credentials",
     },
     image: { type: String, default: "" },
+    /** Avatar via StorageService (Cloudinary) */
+    avatarUrl: { type: String, default: "" },
+    avatarPublicId: { type: String, default: "" },
+    /** Kontak opsional untuk kelengkapan profil */
+    socials: {
+      whatsapp: { type: String, default: "" },
+      telegram: { type: String, default: "" },
+    },
     /** Terisi setelah user klik link verifikasi email */
     emailVerified: { type: Date, default: null },
     /** Rate limit login: 5x salah -> terkunci 5 menit */

@@ -26,6 +26,7 @@ const PaymentSettingSchema = new Schema(
     qris: {
       enabled: { type: Boolean, default: false },
       qrImage: { type: String, default: "" },
+      qrisPublicId: { type: String, default: "" },
     },
   },
   { timestamps: true }

@@ -39,7 +39,7 @@ export async function getPage(slug: string): Promise<PageDTO | null> {
       ? await Page.findOneAndUpdate(
           { slug },
           { $setOnInsert: { title: fallback.title, content: fallback.content } },
-          { upsert: true, new: true }
+          { upsert: true, returnDocument: "after" }
         ).lean()
       : await Page.findOne({ slug }).lean();
 

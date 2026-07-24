@@ -20,8 +20,9 @@ const TopupSchema = new Schema(
       enum: ["manual_transfer", "qris"],
       default: "manual_transfer",
     },
-    /** Path/URL bukti transfer yang diunggah user */
+    /** URL bukti transfer (Cloudinary secure_url) */
     proofImage: { type: String, default: "" },
+    proofPublicId: { type: String, default: "" },
     note: { type: String, default: "" },
     status: {
       type: String,

@@ -14,6 +14,11 @@ const SiteSettingSchema = new Schema(
     registrationEnabled: { type: Boolean, default: true },
     /** Wajib verifikasi email saat register (butuh SMTP). Default: OFF */
     emailVerificationEnabled: { type: Boolean, default: false },
+    /** Banner promo landing page (opsional) via StorageService */
+    landingBanner: {
+      url: { type: String, default: "" },
+      publicId: { type: String, default: "" },
+    },
   },
   { timestamps: true }
 );

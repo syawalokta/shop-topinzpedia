@@ -33,7 +33,9 @@ export interface AdminProductDetail {
   slug: string;
   category: string; // ObjectId string — untuk nilai Select pada form
   logo: string;
+  logoPublicId: string;
   banner: string;
+  bannerPublicId: string;
   accent: string;
   description: string;
   features: string[];
@@ -59,6 +61,8 @@ export interface AdminCategoryRow {
   name: string;
   slug: string;
   icon: string;
+  image: string;
+  imagePublicId: string;
   order: number;
   productCount: number;
 }
@@ -69,7 +73,9 @@ interface LeanProductAdmin {
   slug: string;
   category: { name: string; slug: string } | null;
   logo: string;
+  logoPublicId?: string;
   banner: string;
+  bannerPublicId?: string;
   accent: string;
   description: string;
   features: string[];
@@ -162,7 +168,9 @@ export async function adminGetProduct(
     slug: doc.slug,
     category: String(doc.category),
     logo: doc.logo,
+    logoPublicId: doc.logoPublicId ?? "",
     banner: doc.banner,
+    bannerPublicId: doc.bannerPublicId ?? "",
     accent: doc.accent,
     description: doc.description,
     features: doc.features ?? [],
@@ -210,7 +218,25 @@ interface LeanCategoryAdmin {
   name: string;
   slug: string;
   icon: string;
+  image?: string;
+  imagePublicId?: string;
   order: number;
+}
+
+function toCategoryRow(
+  doc: LeanCategoryAdmin,
+  productCount: number
+): AdminCategoryRow {
+  return {
+    id: String(doc._id),
+    name: doc.name,
+    slug: doc.slug,
+    icon: doc.icon,
+    image: doc.image ?? "",
+    imagePublicId: doc.imagePublicId ?? "",
+    order: doc.order,
+    productCount,
+  };
 }
 
 async function categoryCounts(): Promise<Map<string, number>> {
@@ -231,14 +257,9 @@ export async function adminListCategories(): Promise<AdminCategoryRow[]> {
     categoryCounts(),
   ]);
 
-  return docs.map((doc) => ({
-    id: String(doc._id),
-    name: doc.name,
-    slug: doc.slug,
-    icon: doc.icon,
-    order: doc.order,
-    productCount: countMap.get(String(doc._id)) ?? 0,
-  }));
+  return docs.map((doc) =>
+    toCategoryRow(doc, countMap.get(String(doc._id)) ?? 0)
+  );
 }
 
 /** Kategori dengan pencarian + pagination (halaman kelola kategori). */
@@ -266,14 +287,9 @@ export async function adminListCategoriesPaged(params: {
     categoryCounts(),
   ]);
 
-  const items = docs.map((doc) => ({
-    id: String(doc._id),
-    name: doc.name,
-    slug: doc.slug,
-    icon: doc.icon,
-    order: doc.order,
-    productCount: countMap.get(String(doc._id)) ?? 0,
-  }));
+  const items = docs.map((doc) =>
+    toCategoryRow(doc, countMap.get(String(doc._id)) ?? 0)
+  );
 
   return buildPaged(items, total, page, perPage);
 }

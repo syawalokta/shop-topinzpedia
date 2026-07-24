@@ -67,6 +67,7 @@ export async function createTopup(
     amount: number;
     method: "manual_transfer" | "qris";
     proofImage: string;
+    proofPublicId: string;
     note: string;
   }
 ): Promise<TopupDTO> {
@@ -144,7 +145,7 @@ export async function approveTopup(
   const doc = await Topup.findOneAndUpdate(
     { _id: topupId, status: "pending" },
     { status: "approved", adminNote, processedAt: new Date() },
-    { new: true }
+    { returnDocument: "after" }
   );
   if (!doc) {
     return { ok: false, error: "Topup tidak ditemukan atau sudah diproses." };
@@ -171,7 +172,7 @@ export async function rejectTopup(
   const doc = await Topup.findOneAndUpdate(
     { _id: topupId, status: "pending" },
     { status: "rejected", adminNote, processedAt: new Date() },
-    { new: true }
+    { returnDocument: "after" }
   );
   if (!doc) {
     return { ok: false, error: "Topup tidak ditemukan atau sudah diproses." };

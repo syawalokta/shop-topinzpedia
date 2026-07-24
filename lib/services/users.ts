@@ -105,6 +105,37 @@ export async function adminListUsers(params: {
   return buildPaged(items, total, page, perPage);
 }
 
+export interface ProfileDTO {
+  name: string;
+  username: string;
+  email: string;
+  role: string;
+  avatarUrl: string;
+  avatarPublicId: string;
+  socials: { whatsapp: string; telegram: string };
+  hasPassword: boolean;
+}
+
+/** Profil lengkap user untuk halaman settings. */
+export async function getProfile(userId: string): Promise<ProfileDTO | null> {
+  await connectDB();
+  const doc = await User.findById(userId).lean();
+  if (!doc) return null;
+  return {
+    name: doc.name,
+    username: doc.username,
+    email: doc.email,
+    role: doc.role,
+    avatarUrl: doc.avatarUrl ?? "",
+    avatarPublicId: doc.avatarPublicId ?? "",
+    socials: {
+      whatsapp: doc.socials?.whatsapp ?? "",
+      telegram: doc.socials?.telegram ?? "",
+    },
+    hasPassword: Boolean(doc.passwordHash),
+  };
+}
+
 export async function setUserRole(
   userId: string,
   role: "admin" | "buyer" | "user",

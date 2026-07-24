@@ -16,8 +16,12 @@ const ProductSchema = new Schema(
       required: true,
       index: true,
     },
+    /** URL logo (Cloudinary secure_url / path lokal / URL eksternal) */
     logo: { type: String, default: "" },
+    /** publicId Cloudinary logo — untuk replace/delete anti-orphan */
+    logoPublicId: { type: String, default: "" },
     banner: { type: String, default: "" },
+    bannerPublicId: { type: String, default: "" },
     /** Warna aksen brand (hex) — dipakai untuk banner & dekorasi UI */
     accent: { type: String, default: "#2563eb" },
     description: { type: String, default: "" },

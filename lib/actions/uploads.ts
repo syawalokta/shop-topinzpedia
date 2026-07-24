@@ -1,32 +1,73 @@
 "use server";
 
-import { getAdminSession } from "../authz";
-import { saveUploadedImage, type UploadResult } from "../storage";
-
-const FOLDER_MAP = {
-  logo: "brands",
-  banner: "banners",
-  qris: "qris",
-} as const;
-
-export type UploadKind = keyof typeof FOLDER_MAP;
+import { getAdminSession, getSessionUser } from "../authz";
+import {
+  STORAGE_FOLDERS,
+  getStorage,
+  type StorageResult,
+  type UploadKind,
+} from "../storage";
+import type { ActionResult } from "../../types";
 
 /**
- * Upload gambar dari panel admin (logo produk, banner, QR QRIS).
- * Storage layer lokal — mudah dipindah ke Cloudinary/Vercel Blob.
+ * Server Actions upload/delete gambar.
+ * Semua operasi lewat StorageService (Cloudinary bila dikonfigurasi).
+ *
+ * Otorisasi per kind:
+ *  - avatar          : semua user login (file miliknya sendiri)
+ *  - proof           : semua user login (via createTopupAction)
+ *  - selain itu      : khusus admin
  */
-export async function uploadAdminImageAction(
+
+const USER_KINDS: UploadKind[] = ["avatar"];
+const VALID_KINDS = Object.keys(STORAGE_FOLDERS) as UploadKind[];
+
+async function authorize(kind: UploadKind): Promise<string | null> {
+  if (USER_KINDS.includes(kind)) {
+    return (await getSessionUser()) ? null : "Silakan login terlebih dahulu.";
+  }
+  return (await getAdminSession()) ? null : "Akses ditolak.";
+}
+
+export async function uploadImageAction(
   formData: FormData
-): Promise<UploadResult> {
-  if (!(await getAdminSession())) {
-    return { ok: false, error: "Akses ditolak." };
+): Promise<StorageResult> {
+  const kind = String(formData.get("kind") ?? "") as UploadKind;
+  if (!VALID_KINDS.includes(kind)) {
+    return { ok: false, error: "Jenis upload tidak dikenal." };
   }
 
-  const kind = String(formData.get("kind") ?? "logo") as UploadKind;
-  const folder = FOLDER_MAP[kind] ?? "brands";
-  const file = formData.get("file");
+  const denied = await authorize(kind);
+  if (denied) return { ok: false, error: denied };
 
-  return saveUploadedImage(file instanceof File ? file : null, folder, {
-    allowSvg: kind === "logo",
-  });
+  const file = formData.get("file");
+  return getStorage().upload(file instanceof File ? file : (null as never), kind);
+}
+
+/**
+ * Hapus file dari storage. publicId harus berada di folder sesuai kind
+ * (mencegah penghapusan sembarang file lewat manipulasi parameter).
+ */
+export async function deleteImageAction(
+  publicId: string,
+  kind: UploadKind
+): Promise<ActionResult> {
+  if (!VALID_KINDS.includes(kind)) {
+    return { ok: false, error: "Jenis upload tidak dikenal." };
+  }
+
+  const denied = await authorize(kind);
+  if (denied) return { ok: false, error: denied };
+
+  const folder = STORAGE_FOLDERS[kind];
+  const localFolder = `local:/uploads/${folder.replace(/^topinzpedia\//, "")}`;
+  if (
+    !publicId ||
+    !(publicId.startsWith(`${folder}/`) || publicId.startsWith(localFolder))
+  ) {
+    return { ok: false, error: "publicId tidak sesuai folder." };
+  }
+
+  await getStorage().delete(publicId);
+  return { ok: true };
 }

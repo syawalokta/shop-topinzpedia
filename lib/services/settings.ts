@@ -11,7 +11,7 @@ export interface PaymentSettingsDTO {
     accountNumber: string;
     accountName: string;
   };
-  qris: { enabled: boolean; qrImage: string };
+  qris: { enabled: boolean; qrImage: string; qrisPublicId: string };
 }
 
 export interface SiteSettingsDTO {
@@ -23,6 +23,8 @@ export interface SiteSettingsDTO {
   googleConfigured: boolean;
   /** true bila env SMTP terpasang */
   mailConfigured: boolean;
+  /** Banner promo landing page (opsional) */
+  landingBanner: { url: string; publicId: string };
 }
 
 const paymentDefaults: PaymentSettingsDTO = {
@@ -33,7 +35,7 @@ const paymentDefaults: PaymentSettingsDTO = {
     accountNumber: "1234567890",
     accountName: "TopinzPedia",
   },
-  qris: { enabled: false, qrImage: "" },
+  qris: { enabled: false, qrImage: "", qrisPublicId: "" },
 };
 
 export async function getPaymentSettings(): Promise<PaymentSettingsDTO> {
@@ -42,7 +44,7 @@ export async function getPaymentSettings(): Promise<PaymentSettingsDTO> {
     const doc = await PaymentSetting.findOneAndUpdate(
       { key: "payment" },
       { $setOnInsert: paymentDefaults },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     ).lean();
 
     return {
@@ -56,6 +58,7 @@ export async function getPaymentSettings(): Promise<PaymentSettingsDTO> {
       qris: {
         enabled: doc?.qris?.enabled ?? false,
         qrImage: doc?.qris?.qrImage ?? "",
+        qrisPublicId: doc?.qris?.qrisPublicId ?? "",
       },
     };
   } catch (error) {
@@ -94,7 +97,7 @@ export async function getSiteSettings(): Promise<SiteSettingsDTO> {
           emailVerificationEnabled: false,
         },
       },
-      { upsert: true, new: true }
+      { upsert: true, returnDocument: "after" }
     ).lean();
 
     return {
@@ -103,6 +106,10 @@ export async function getSiteSettings(): Promise<SiteSettingsDTO> {
       emailVerificationEnabled: doc?.emailVerificationEnabled ?? false,
       googleConfigured,
       mailConfigured,
+      landingBanner: {
+        url: doc?.landingBanner?.url ?? "",
+        publicId: doc?.landingBanner?.publicId ?? "",
+      },
     };
   } catch (error) {
     console.error("[services/settings] fallback site defaults:", error);
@@ -112,6 +119,7 @@ export async function getSiteSettings(): Promise<SiteSettingsDTO> {
       emailVerificationEnabled: false,
       googleConfigured,
       mailConfigured,
+      landingBanner: { url: "", publicId: "" },
     };
   }
 }
@@ -120,6 +128,7 @@ export async function updateSiteSettings(input: {
   googleAuthEnabled: boolean;
   registrationEnabled: boolean;
   emailVerificationEnabled: boolean;
+  landingBanner: { url: string; publicId: string };
 }): Promise<void> {
   await connectDB();
   await SiteSetting.findOneAndUpdate(

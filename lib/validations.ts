@@ -21,6 +21,15 @@ export const categorySchema = z.object({
     .string()
     .min(1, "Isi nama ikon Lucide, mis. bot / clapperboard")
     .max(40),
+  image: z
+    .string()
+    .max(500)
+    .refine(
+      (v) => v === "" || v.startsWith("/") || /^https?:\/\/\S+$/i.test(v),
+      "Gambar harus kosong, path lokal, atau URL http(s)"
+    )
+    .default(""),
+  imagePublicId: z.string().max(300).default(""),
 });
 export type CategoryInput = z.infer<typeof categorySchema>;
 
@@ -55,6 +64,8 @@ export const productSchema = z.object({
     .array(z.string().min(1))
     .max(12, "Maksimal 12 poin fitur")
     .default([]),
+  logoPublicId: z.string().max(300).default(""),
+  bannerPublicId: z.string().max(300).default(""),
   rating: z.coerce.number().min(0, "Rating 0–5").max(5, "Rating 0–5"),
   // Catatan: `sold` sengaja TIDAK ada di sini — jumlah terjual
   // bertambah otomatis saat transaksi berhasil, bukan input manual.
@@ -123,9 +134,57 @@ export const settingsSchema = z.object({
   accountNumber: z.string().max(40),
   accountName: z.string().max(60),
   qrisEnabled: z.boolean(),
-  qrisImage: z.string().max(300),
+  qrisImage: z.string().max(500),
+  qrisPublicId: z.string().max(300).default(""),
   googleAuthEnabled: z.boolean(),
   registrationEnabled: z.boolean(),
   emailVerificationEnabled: z.boolean(),
+  landingBannerUrl: z.string().max(500).default(""),
+  landingBannerPublicId: z.string().max(300).default(""),
 });
 export type SettingsInput = z.infer<typeof settingsSchema>;
+
+/* ---------------- Profil user ---------------- */
+
+export const socialsSchema = z.object({
+  whatsapp: z
+    .string()
+    .max(20, "Maksimal 20 digit")
+    .regex(/^[0-9+]*$/, "Hanya angka (format internasional, mis. 62812xxxx)")
+    .default(""),
+  telegram: z
+    .string()
+    .max(32, "Maksimal 32 karakter")
+    .regex(/^[a-zA-Z0-9_@]*$/, "Username Telegram tidak valid")
+    .default(""),
+});
+export type SocialsInput = z.infer<typeof socialsSchema>;
+
+export const changePasswordSchema = z.object({
+  oldPassword: z.string().min(1, "Isi password lama"),
+  newPassword: z.string().min(8, "Password baru minimal 8 karakter").max(72),
+});
+
+export const adminUserUpdateSchema = z.object({
+  name: z.string().min(2, "Nama minimal 2 karakter").max(60),
+  username: z
+    .string()
+    .regex(
+      /^[a-z0-9_]{3,20}$/,
+      "Username 3–20 karakter: huruf kecil, angka, underscore"
+    ),
+  email: z.email("Format email tidak valid"),
+  /** Kosongkan untuk tidak mengubah password */
+  password: z
+    .string()
+    .refine((v) => v === "" || (v.length >= 8 && v.length <= 72), {
+      message: "Password baru minimal 8 karakter (atau kosongkan)",
+    })
+    .default(""),
+  balance: z.coerce
+    .number()
+    .int("Saldo harus bilangan bulat")
+    .min(0, "Saldo tidak boleh negatif")
+    .max(1_000_000_000),
+});
+export type AdminUserUpdateInput = z.infer<typeof adminUserUpdateSchema>;

@@ -5,6 +5,7 @@ import { Types } from "mongoose";
 
 import { connectDB, isDbConfigured } from "../db";
 import { getAdminSession } from "../authz";
+import { getStorage } from "../storage";
 import { categorySchema, type CategoryInput } from "../validations";
 import { Category, Product } from "../../models";
 import type { ActionResult } from "../../types";
@@ -98,8 +99,16 @@ export async function updateCategory(
       };
     }
 
-    const updated = await Category.findByIdAndUpdate(id, parsed.data);
-    if (!updated) return { ok: false, error: "Kategori tidak ditemukan." };
+    const previous = await Category.findByIdAndUpdate(id, parsed.data);
+    if (!previous) return { ok: false, error: "Kategori tidak ditemukan." };
+
+    // Replace image: hapus file lama dari storage
+    if (
+      previous.imagePublicId &&
+      previous.imagePublicId !== parsed.data.imagePublicId
+    ) {
+      await getStorage().delete(previous.imagePublicId);
+    }
 
     revalidateCategoryPages();
     return { ok: true };
@@ -130,6 +139,10 @@ export async function deleteCategory(id: string): Promise<ActionResult> {
 
     const deleted = await Category.findByIdAndDelete(id);
     if (!deleted) return { ok: false, error: "Kategori tidak ditemukan." };
+
+    if (deleted.imagePublicId) {
+      await getStorage().delete(deleted.imagePublicId);
+    }
 
     revalidateCategoryPages();
     return { ok: true };

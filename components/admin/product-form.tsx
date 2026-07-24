@@ -32,8 +32,10 @@ const formSchema = z.object({
   slug: slugSchema,
   category: z.string().min(1, "Pilih kategori"),
   status: z.enum(["active", "inactive"]),
-  logo: z.string().min(1, "Isi path logo, mis. /brands/chatgpt.svg"),
+  logo: z.string().min(1, "Upload logo atau isi URL gambar"),
+  logoPublicId: z.string(),
   banner: z.string(),
+  bannerPublicId: z.string(),
   accent: z
     .string()
     .regex(/^#[0-9a-fA-F]{6}$/, "Format warna hex 6 digit, mis. #2563eb"),
@@ -70,8 +72,10 @@ export function ProductForm({ categories, product }: ProductFormProps) {
       slug: product?.slug ?? "",
       category: product?.category ?? "",
       status: product?.status ?? "active",
-      logo: product?.logo ?? "/brands/",
+      logo: product?.logo ?? "",
+      logoPublicId: product?.logoPublicId ?? "",
       banner: product?.banner ?? "",
+      bannerPublicId: product?.bannerPublicId ?? "",
       accent: product?.accent ?? "#2563eb",
       rating: String(product?.rating ?? 5),
       description: product?.description ?? "",
@@ -96,7 +100,9 @@ export function ProductForm({ categories, product }: ProductFormProps) {
       category: values.category,
       status: values.status,
       logo: values.logo,
+      logoPublicId: values.logoPublicId,
       banner: values.banner,
+      bannerPublicId: values.bannerPublicId,
       accent: values.accent,
       rating: Number(values.rating),
       description: values.description,
@@ -204,9 +210,11 @@ export function ProductForm({ categories, product }: ProductFormProps) {
           <ImageUpload
             kind="logo"
             value={watch("logo")}
-            onChange={(url) =>
-              setValue("logo", url, { shouldValidate: true, shouldDirty: true })
-            }
+            publicId={watch("logoPublicId")}
+            onChange={(url, pid) => {
+              setValue("logo", url, { shouldValidate: true, shouldDirty: true });
+              setValue("logoPublicId", pid, { shouldDirty: true });
+            }}
           />
           {fieldError(errors.logo?.message)}
         </div>
@@ -259,9 +267,11 @@ export function ProductForm({ categories, product }: ProductFormProps) {
           <ImageUpload
             kind="banner"
             value={watch("banner")}
-            onChange={(url) =>
-              setValue("banner", url, { shouldDirty: true })
-            }
+            publicId={watch("bannerPublicId")}
+            onChange={(url, pid) => {
+              setValue("banner", url, { shouldDirty: true });
+              setValue("bannerPublicId", pid, { shouldDirty: true });
+            }}
           />
           <p className="text-xs text-muted-foreground">
             Kosongkan untuk gradient otomatis dari warna aksen.

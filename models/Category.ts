@@ -11,6 +11,9 @@ const CategorySchema = new Schema(
     name: { type: String, required: true, trim: true },
     slug: { type: String, required: true, unique: true, lowercase: true },
     icon: { type: String, default: "sparkles" },
+    /** Gambar kategori (opsional) via StorageService */
+    image: { type: String, default: "" },
+    imagePublicId: { type: String, default: "" },
     order: { type: Number, default: 0 },
   },
   { timestamps: true }

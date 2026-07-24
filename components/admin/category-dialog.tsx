@@ -15,6 +15,7 @@ import { slugify } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { ImageUpload } from "@/components/shared/image-upload";
 import {
   Dialog,
   DialogClose,
@@ -30,6 +31,8 @@ const formSchema = z.object({
   name: z.string().min(2, "Nama minimal 2 karakter").max(40),
   slug: slugSchema,
   icon: z.string().min(1, "Isi nama ikon Lucide, mis. bot").max(40),
+  image: z.string(),
+  imagePublicId: z.string(),
 });
 
 type CategoryFormValues = z.infer<typeof formSchema>;
@@ -58,6 +61,8 @@ export function CategoryDialog({ category, trigger }: CategoryDialogProps) {
       name: category?.name ?? "",
       slug: category?.slug ?? "",
       icon: category?.icon ?? "sparkles",
+      image: category?.image ?? "",
+      imagePublicId: category?.imagePublicId ?? "",
     },
   });
 
@@ -68,6 +73,8 @@ export function CategoryDialog({ category, trigger }: CategoryDialogProps) {
       name: category?.name ?? "",
       slug: category?.slug ?? "",
       icon: category?.icon ?? "sparkles",
+      image: category?.image ?? "",
+      imagePublicId: category?.imagePublicId ?? "",
     });
   }, [open, category, reset]);
 
@@ -83,6 +90,8 @@ export function CategoryDialog({ category, trigger }: CategoryDialogProps) {
       name: values.name,
       slug: values.slug,
       icon: values.icon,
+      image: values.image,
+      imagePublicId: values.imagePublicId,
     };
 
     const result = category
@@ -152,6 +161,19 @@ export function CategoryDialog({ category, trigger }: CategoryDialogProps) {
               Urutan tampil diatur otomatis (kategori baru di posisi terakhir).
             </p>
             {fieldError(errors.slug?.message)}
+          </div>
+
+          <div className="space-y-2">
+            <Label>Gambar Kategori (opsional)</Label>
+            <ImageUpload
+              kind="category"
+              value={watch("image")}
+              publicId={watch("imagePublicId")}
+              onChange={(url, pid) => {
+                setValue("image", url, { shouldDirty: true });
+                setValue("imagePublicId", pid, { shouldDirty: true });
+              }}
+            />
           </div>
 
           <div className="space-y-2">

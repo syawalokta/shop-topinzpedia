@@ -123,7 +123,7 @@ export async function purchaseWithWallet(
         transactionId: transaction._id,
       },
     },
-    { sort: { createdAt: 1 }, new: true }
+    { sort: { createdAt: 1 }, returnDocument: "after" }
   );
 
   // 4b. Kalah race / stok habis -> kompensasi

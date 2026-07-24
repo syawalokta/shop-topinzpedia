@@ -4,7 +4,7 @@ import { revalidatePath } from "next/cache";
 
 import { getAdminSession, getSessionUser } from "../authz";
 import { isDbConfigured } from "../db";
-import { saveUploadedImage } from "../storage";
+import { getStorage } from "../storage";
 import {
   approveTopup,
   createTopup,
@@ -47,9 +47,9 @@ export async function createTopupAction(
   }
 
   const proof = formData.get("proof");
-  const upload = await saveUploadedImage(
-    proof instanceof File ? proof : null,
-    "proofs"
+  const upload = await getStorage().upload(
+    proof instanceof File ? proof : (null as never),
+    "proof"
   );
   if (!upload.ok) {
     return { ok: false, error: `Bukti transfer: ${upload.error}` };
@@ -61,6 +61,7 @@ export async function createTopupAction(
       method: parsed.data.method,
       note: parsed.data.note,
       proofImage: upload.url,
+      proofPublicId: upload.publicId,
     });
     revalidatePath("/dashboard/topup");
     revalidatePath("/admin/topups");
