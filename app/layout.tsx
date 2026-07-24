@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Poppins } from "next/font/google";
+import { Toaster } from "sonner";
 
 import { SITE } from "@/lib/constants";
 import { ThemeProvider } from "@/components/layout/theme-provider";
@@ -68,6 +69,7 @@ export default function RootLayout({
           disableTransitionOnChange
         >
           {children}
+          <Toaster richColors position="top-center" />
         </ThemeProvider>
       </body>
     </html>

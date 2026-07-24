@@ -17,6 +17,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { ImageUpload } from "@/components/shared/image-upload";
 import {
   Select,
   SelectContent,
@@ -205,27 +206,21 @@ export function ProductForm({ categories, product }: ProductFormProps) {
         </div>
 
         <div className="space-y-2">
-          <Label htmlFor="logo">Logo</Label>
-          <div className="flex items-center gap-2.5">
-            <Input
-              id="logo"
-              placeholder="/brands/chatgpt.svg"
-              aria-invalid={Boolean(errors.logo)}
-              {...register("logo")}
-            />
-            {/* Preview kecil — path bebas, jadi pakai img biasa */}
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={watch("logo") || "/brands/chatgpt.svg"}
-              alt=""
-              width={36}
-              height={36}
-              className="size-9 shrink-0 rounded-lg border bg-muted/50 object-contain"
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            File SVG tersedia di folder public/brands.
-          </p>
+          <Label>Logo Produk</Label>
+          <ImageUpload
+            kind="logo"
+            value={watch("logo")}
+            onChange={(url) =>
+              setValue("logo", url, { shouldValidate: true, shouldDirty: true })
+            }
+          />
+          <Input
+            id="logo"
+            placeholder="atau isi path manual, mis. /brands/chatgpt.svg"
+            aria-invalid={Boolean(errors.logo)}
+            className="text-xs"
+            {...register("logo")}
+          />
           {fieldError(errors.logo?.message)}
         </div>
 
@@ -281,10 +276,18 @@ export function ProductForm({ categories, product }: ProductFormProps) {
         </div>
 
         <div className="space-y-2 md:col-span-2">
-          <Label htmlFor="banner">Banner (opsional)</Label>
+          <Label>Banner (opsional)</Label>
+          <ImageUpload
+            kind="banner"
+            value={watch("banner")}
+            onChange={(url) =>
+              setValue("banner", url, { shouldDirty: true })
+            }
+          />
           <Input
             id="banner"
             placeholder="Kosongkan untuk gradient otomatis dari warna aksen"
+            className="text-xs"
             {...register("banner")}
           />
         </div>

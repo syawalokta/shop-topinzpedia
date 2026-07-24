@@ -54,10 +54,63 @@ export const variantSchema = z.object({
     .number()
     .int("Harga dalam rupiah bulat")
     .min(0, "Harga tidak boleh negatif"),
-  stock: z.coerce.number().int("Stok harus bilangan bulat").min(0),
   duration: z.string().min(1, "Isi durasi, mis. 1 Bulan").max(40),
   warranty: z.string().min(1, "Isi garansi, mis. Garansi 30 Hari").max(60),
   description: z.string().max(300).default(""),
   active: z.boolean(),
 });
 export type VariantInput = z.infer<typeof variantSchema>;
+
+/* ---------------- Auth & user ---------------- */
+
+export const registerSchema = z.object({
+  name: z.string().min(2, "Nama minimal 2 karakter").max(60),
+  username: z
+    .string()
+    .regex(
+      /^[a-z0-9_]{3,20}$/,
+      "Username 3–20 karakter: huruf kecil, angka, underscore"
+    ),
+  email: z.email("Format email tidak valid"),
+  password: z.string().min(8, "Password minimal 8 karakter").max(72),
+});
+export type RegisterInput = z.infer<typeof registerSchema>;
+
+/* ---------------- Wallet & topup ---------------- */
+
+export const topupSchema = z.object({
+  amount: z.coerce
+    .number()
+    .int("Nominal harus bilangan bulat")
+    .min(10000, "Minimal topup Rp10.000")
+    .max(10_000_000, "Maksimal topup Rp10.000.000"),
+  method: z.enum(["manual_transfer", "qris"]),
+  note: z.string().max(200, "Catatan maksimal 200 karakter"),
+});
+export type TopupInput = z.infer<typeof topupSchema>;
+
+/* ---------------- Stock ---------------- */
+
+export const stockSchema = z.object({
+  content: z
+    .string()
+    .min(3, "Isi akun minimal 3 karakter")
+    .max(2000, "Maksimal 2000 karakter"),
+  status: z.enum(["available", "reserved"]),
+});
+export type StockInput = z.infer<typeof stockSchema>;
+
+/* ---------------- Settings ---------------- */
+
+export const settingsSchema = z.object({
+  walletEnabled: z.boolean(),
+  manualTransferEnabled: z.boolean(),
+  bankName: z.string().max(40),
+  accountNumber: z.string().max(40),
+  accountName: z.string().max(60),
+  qrisEnabled: z.boolean(),
+  qrisImage: z.string().max(300),
+  googleAuthEnabled: z.boolean(),
+  registrationEnabled: z.boolean(),
+});
+export type SettingsInput = z.infer<typeof settingsSchema>;

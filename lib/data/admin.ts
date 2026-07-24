@@ -1,6 +1,9 @@
 import { Types } from "mongoose";
 
 import { connectDB } from "../db";
+import { escapeRegex } from "../utils";
+import { buildPaged, pageSkip, type Paged } from "../pagination";
+import { availableCountByVariant } from "../services/stock";
 import { Category, Product, Variant } from "../../models";
 
 /**
@@ -43,7 +46,8 @@ export interface AdminVariantRow {
   id: string;
   name: string;
   price: number;
-  stock: number;
+  /** Dihitung dari koleksi Stock (status available) */
+  availableStock: number;
   duration: string;
   warranty: string;
   description: string;
@@ -57,21 +61,6 @@ export interface AdminCategoryRow {
   icon: string;
   order: number;
   productCount: number;
-}
-
-export interface DashboardStats {
-  productCount: number;
-  categoryCount: number;
-  variantCount: number;
-  totalSold: number;
-  recentProducts: {
-    id: string;
-    name: string;
-    categoryName: string;
-    status: string;
-    sold: number;
-    createdAt: string;
-  }[];
 }
 
 interface LeanProductAdmin {
@@ -90,30 +79,52 @@ interface LeanProductAdmin {
   createdAt?: Date;
 }
 
-export async function adminListProducts(): Promise<AdminProductRow[]> {
+export async function adminListProducts(
+  params: {
+    q?: string;
+    category?: string;
+    status?: string;
+    page?: number;
+    perPage?: number;
+  } = {}
+): Promise<Paged<AdminProductRow>> {
   await connectDB();
+  const { q, category, status, page = 1, perPage = 10 } = params;
 
-  const [docs, variantStats] = await Promise.all([
-    Product.find()
+  const filter: Record<string, unknown> = {};
+  if (q) filter.name = { $regex: escapeRegex(q), $options: "i" };
+  if (status && ["active", "inactive"].includes(status)) filter.status = status;
+  if (category) {
+    const cat = await Category.findOne({ slug: category }).select("_id").lean();
+    filter.category = cat ? cat._id : new Types.ObjectId();
+  }
+
+  const [docs, total] = await Promise.all([
+    Product.find(filter)
       .populate("category", "name slug")
       .sort({ createdAt: -1 })
+      .skip(pageSkip(page, perPage))
+      .limit(perPage)
       .lean() as unknown as Promise<LeanProductAdmin[]>,
-    Variant.aggregate([
-      {
-        $group: {
-          _id: "$productId",
-          count: { $sum: 1 },
-          min: { $min: "$price" },
-        },
-      },
-    ]) as Promise<{ _id: Types.ObjectId; count: number; min: number }[]>,
+    Product.countDocuments(filter),
   ]);
+
+  const variantStats = (await Variant.aggregate([
+    { $match: { productId: { $in: docs.map((d) => d._id) } } },
+    {
+      $group: {
+        _id: "$productId",
+        count: { $sum: 1 },
+        min: { $min: "$price" },
+      },
+    },
+  ])) as { _id: Types.ObjectId; count: number; min: number }[];
 
   const statMap = new Map(
     variantStats.map((s) => [String(s._id), { count: s.count, min: s.min }])
   );
 
-  return docs.map((doc) => {
+  const items = docs.map((doc) => {
     const stat = statMap.get(String(doc._id));
     return {
       id: String(doc._id),
@@ -129,6 +140,8 @@ export async function adminListProducts(): Promise<AdminProductRow[]> {
       createdAt: (doc.createdAt ?? new Date()).toISOString(),
     };
   });
+
+  return buildPaged(items, total, page, perPage);
 }
 
 export async function adminGetProduct(
@@ -172,18 +185,19 @@ export async function adminListVariants(
     _id: Types.ObjectId;
     name: string;
     price: number;
-    stock: number;
     duration: string;
     warranty: string;
     description: string;
     active: boolean;
   }[];
 
+  const counts = await availableCountByVariant(docs.map((d) => d._id));
+
   return docs.map((doc) => ({
     id: String(doc._id),
     name: doc.name,
     price: doc.price,
-    stock: doc.stock,
+    availableStock: counts.get(String(doc._id)) ?? 0,
     duration: doc.duration,
     warranty: doc.warranty,
     description: doc.description,
@@ -191,25 +205,31 @@ export async function adminListVariants(
   }));
 }
 
+interface LeanCategoryAdmin {
+  _id: Types.ObjectId;
+  name: string;
+  slug: string;
+  icon: string;
+  order: number;
+}
+
+async function categoryCounts(): Promise<Map<string, number>> {
+  const counts = (await Product.aggregate([
+    { $group: { _id: "$category", count: { $sum: 1 } } },
+  ])) as { _id: Types.ObjectId; count: number }[];
+  return new Map(counts.map((c) => [String(c._id), c.count]));
+}
+
+/** Seluruh kategori (untuk opsi Select pada form). */
 export async function adminListCategories(): Promise<AdminCategoryRow[]> {
   await connectDB();
 
-  const [docs, counts] = await Promise.all([
+  const [docs, countMap] = await Promise.all([
     Category.find().sort({ order: 1 }).lean() as unknown as Promise<
-      {
-        _id: Types.ObjectId;
-        name: string;
-        slug: string;
-        icon: string;
-        order: number;
-      }[]
+      LeanCategoryAdmin[]
     >,
-    Product.aggregate([
-      { $group: { _id: "$category", count: { $sum: 1 } } },
-    ]) as Promise<{ _id: Types.ObjectId; count: number }[]>,
+    categoryCounts(),
   ]);
-
-  const countMap = new Map(counts.map((c) => [String(c._id), c.count]));
 
   return docs.map((doc) => ({
     id: String(doc._id),
@@ -221,22 +241,68 @@ export async function adminListCategories(): Promise<AdminCategoryRow[]> {
   }));
 }
 
-export async function getDashboardStats(): Promise<DashboardStats> {
+/** Kategori dengan pencarian + pagination (halaman kelola kategori). */
+export async function adminListCategoriesPaged(params: {
+  q?: string;
+  page?: number;
+  perPage?: number;
+}): Promise<Paged<AdminCategoryRow>> {
+  await connectDB();
+  const { q, page = 1, perPage = 10 } = params;
+
+  const filter: Record<string, unknown> = {};
+  if (q) {
+    const regex = { $regex: escapeRegex(q), $options: "i" };
+    filter.$or = [{ name: regex }, { slug: regex }];
+  }
+
+  const [docs, total, countMap] = await Promise.all([
+    Category.find(filter)
+      .sort({ order: 1 })
+      .skip(pageSkip(page, perPage))
+      .limit(perPage)
+      .lean() as unknown as Promise<LeanCategoryAdmin[]>,
+    Category.countDocuments(filter),
+    categoryCounts(),
+  ]);
+
+  const items = docs.map((doc) => ({
+    id: String(doc._id),
+    name: doc.name,
+    slug: doc.slug,
+    icon: doc.icon,
+    order: doc.order,
+    productCount: countMap.get(String(doc._id)) ?? 0,
+  }));
+
+  return buildPaged(items, total, page, perPage);
+}
+
+/** Statistik katalog dasar + produk terlaris (dashboard admin). */
+export async function getCatalogStats(): Promise<{
+  productCount: number;
+  categoryCount: number;
+  variantCount: number;
+  totalSold: number;
+  topProducts: { id: string; name: string; sold: number; logo: string }[];
+}> {
   await connectDB();
 
-  const [productCount, categoryCount, variantCount, soldAgg, recentDocs] =
+  const [productCount, categoryCount, variantCount, soldAgg, topDocs] =
     await Promise.all([
       Product.countDocuments(),
       Category.countDocuments(),
       Variant.countDocuments(),
       Product.aggregate([
         { $group: { _id: null, total: { $sum: "$sold" } } },
-      ]) as Promise<{ _id: null; total: number }[]>,
-      Product.find()
-        .populate("category", "name")
-        .sort({ createdAt: -1 })
+      ]) as Promise<{ total: number }[]>,
+      Product.find({ status: "active" })
+        .sort({ sold: -1 })
         .limit(5)
-        .lean() as unknown as Promise<LeanProductAdmin[]>,
+        .select("name sold logo")
+        .lean() as unknown as Promise<
+        { _id: Types.ObjectId; name: string; sold: number; logo: string }[]
+      >,
     ]);
 
   return {
@@ -244,13 +310,11 @@ export async function getDashboardStats(): Promise<DashboardStats> {
     categoryCount,
     variantCount,
     totalSold: soldAgg[0]?.total ?? 0,
-    recentProducts: recentDocs.map((doc) => ({
+    topProducts: topDocs.map((doc) => ({
       id: String(doc._id),
       name: doc.name,
-      categoryName: doc.category?.name ?? "—",
-      status: doc.status,
       sold: doc.sold,
-      createdAt: (doc.createdAt ?? new Date()).toISOString(),
+      logo: doc.logo,
     })),
   };
 }

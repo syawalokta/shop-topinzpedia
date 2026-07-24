@@ -1,19 +1,23 @@
+import { getSessionUser } from "@/lib/authz";
 import { Footer } from "@/components/layout/footer";
 import { Navbar } from "@/components/layout/navbar";
 
 /**
  * Layout untuk seluruh halaman publik (landing, katalog, detail produk).
- * Route group terpisah agar mudah menambah group lain di masa depan,
- * mis. (admin) dengan layout dashboard sendiri.
+ * Navbar menerima info sesi agar tombol Login/Dashboard menyesuaikan.
  */
-export default function SiteLayout({
+export default async function SiteLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const user = await getSessionUser();
+
   return (
     <div className="flex min-h-svh flex-col">
-      <Navbar />
+      <Navbar
+        user={user ? { name: user.name, role: user.role } : null}
+      />
       <main className="flex-1">{children}</main>
       <Footer />
     </div>

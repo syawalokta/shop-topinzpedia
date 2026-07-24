@@ -75,15 +75,25 @@ export default async function ProductVariantsPage({
             </p>
           </div>
         </div>
-        <VariantDialog
-          productId={product.id}
-          trigger={
-            <Button size="sm" className="rounded-full">
-              <Plus className="size-4" />
-              Tambah Varian
-            </Button>
-          }
-        />
+        <div className="flex flex-wrap gap-2">
+          <Button
+            asChild
+            size="sm"
+            variant="outline"
+            className="rounded-full"
+          >
+            <Link href="/admin/stock/import">Import Stock</Link>
+          </Button>
+          <VariantDialog
+            productId={product.id}
+            trigger={
+              <Button size="sm" className="rounded-full">
+                <Plus className="size-4" />
+                Tambah Varian
+              </Button>
+            }
+          />
+        </div>
       </div>
 
       <div className="mt-8">
@@ -106,7 +116,7 @@ export default async function ProductVariantsPage({
                   <TableHead>Durasi</TableHead>
                   <TableHead>Garansi</TableHead>
                   <TableHead className="text-right">Harga</TableHead>
-                  <TableHead className="text-right">Stok</TableHead>
+                  <TableHead className="text-right">Stok Tersedia</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Aksi</TableHead>
                 </TableRow>
@@ -131,8 +141,16 @@ export default async function ProductVariantsPage({
                     <TableCell className="text-right font-medium">
                       {formatIDR(variant.price)}
                     </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {variant.stock}
+                    <TableCell className="text-right">
+                      <span
+                        className={
+                          variant.availableStock > 0
+                            ? "font-semibold text-emerald-600 dark:text-emerald-400"
+                            : "font-semibold text-destructive"
+                        }
+                      >
+                        {variant.availableStock}
+                      </span>
                     </TableCell>
                     <TableCell>
                       {variant.active ? (

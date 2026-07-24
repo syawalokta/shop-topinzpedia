@@ -4,14 +4,14 @@ import { revalidatePath } from "next/cache";
 import { Types } from "mongoose";
 
 import { connectDB, isDbConfigured } from "../db";
-import { isAdminSession } from "../admin-session";
+import { getAdminSession } from "../authz";
 import { variantSchema, type VariantInput } from "../validations";
 import { Product, Variant } from "../../models";
 import type { ActionResult } from "../../types";
 
 async function guard(): Promise<string | null> {
-  if (!(await isAdminSession())) {
-    return "Sesi admin tidak valid. Silakan login ulang.";
+  if (!(await getAdminSession())) {
+    return "Akses ditolak. Silakan login sebagai admin.";
   }
   if (!isDbConfigured()) {
     return "Database belum dikonfigurasi. Set MONGODB_URI untuk mengelola data.";

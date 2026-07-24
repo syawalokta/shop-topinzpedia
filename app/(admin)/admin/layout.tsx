@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { Toaster } from "sonner";
 
 export const metadata: Metadata = {
   title: {
@@ -12,20 +11,11 @@ export const metadata: Metadata = {
   },
 };
 
-/**
- * Layout dasar segmen /admin — hanya menambahkan Toaster.
- * Shell sidebar ada di route group (dashboard) agar halaman login
- * tetap tampil bersih tanpa navigasi.
- */
+/** Layout dasar segmen /admin (guard role ada di middleware). */
 export default function AdminRootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
-  return (
-    <>
-      {children}
-      <Toaster richColors position="top-center" />
-    </>
-  );
+  return <>{children}</>;
 }

@@ -7,7 +7,8 @@ import {
   FALLBACK_CATEGORY_ICON,
 } from "@/lib/constants";
 import { isDbConfigured } from "@/lib/db";
-import { adminListCategories } from "@/lib/data/admin";
+import { adminListCategoriesPaged } from "@/lib/data/admin";
+import { parsePage } from "@/lib/pagination";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import {
@@ -19,16 +20,31 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { CategoryDialog } from "@/components/admin/category-dialog";
+import { DataToolbar } from "@/components/admin/data-toolbar";
 import { DbNotice } from "@/components/admin/db-notice";
 import { DeleteButton } from "@/components/admin/delete-button";
+import { PaginationNav } from "@/components/shared/pagination-nav";
 
 export const metadata: Metadata = {
   title: "Kelola Kategori",
 };
 
-export default async function AdminCategoriesPage() {
+interface AdminCategoriesPageProps {
+  searchParams: Promise<{ q?: string; page?: string }>;
+}
+
+export default async function AdminCategoriesPage({
+  searchParams,
+}: AdminCategoriesPageProps) {
   const dbReady = isDbConfigured();
-  const categories = dbReady ? await adminListCategories() : [];
+  const params = await searchParams;
+
+  const result = dbReady
+    ? await adminListCategoriesPaged({
+        q: params.q,
+        page: parsePage(params.page),
+      })
+    : null;
 
   return (
     <>
@@ -39,7 +55,7 @@ export default async function AdminCategoriesPage() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {dbReady
-              ? `${categories.length} kategori — urutan menentukan posisi tampil.`
+              ? `${result?.total ?? 0} kategori — urutan menentukan posisi tampil.`
               : "Hubungkan database untuk mengelola kategori."}
           </p>
         </div>
@@ -53,16 +69,22 @@ export default async function AdminCategoriesPage() {
         />
       </div>
 
-      <div className="mt-8">
+      {dbReady ? (
+        <div className="mt-6">
+          <DataToolbar searchPlaceholder="Cari nama atau slug kategori…" />
+        </div>
+      ) : null}
+
+      <div className="mt-5">
         {!dbReady ? (
           <DbNotice />
-        ) : categories.length === 0 ? (
+        ) : !result || result.items.length === 0 ? (
           <div className="rounded-lg border border-dashed bg-card px-6 py-16 text-center">
             <h2 className="font-heading text-lg font-semibold">
-              Belum ada kategori
+              Tidak ada kategori
             </h2>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              Buat kategori pertama sebelum menambahkan produk.
+              Ubah kata kunci pencarian atau buat kategori baru.
             </p>
           </div>
         ) : (
@@ -79,7 +101,7 @@ export default async function AdminCategoriesPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {categories.map((category) => {
+                {result.items.map((category) => {
                   const Icon =
                     CATEGORY_ICONS[category.slug] ?? FALLBACK_CATEGORY_ICON;
 
@@ -138,6 +160,15 @@ export default async function AdminCategoriesPage() {
           </div>
         )}
       </div>
+
+      {result ? (
+        <PaginationNav
+          page={result.page}
+          pages={result.pages}
+          total={result.total}
+          label="kategori"
+        />
+      ) : null}
     </>
   );
 }

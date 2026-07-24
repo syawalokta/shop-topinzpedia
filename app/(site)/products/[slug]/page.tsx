@@ -11,16 +11,18 @@ import {
   Zap,
 } from "lucide-react";
 
+import { getSessionUser } from "@/lib/authz";
 import { SITE } from "@/lib/constants";
 import { getProductBySlug, getRelatedProducts } from "@/lib/data/products";
+import { isDbConfigured } from "@/lib/db";
+import { getPaymentSettings } from "@/lib/services/settings";
+import { getOrCreateWallet } from "@/lib/services/wallet";
 import { formatCompact } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { ProductGrid } from "@/components/products/product-grid";
 import { VariantSelector } from "@/components/products/variant-selector";
 import { FadeUp } from "@/components/shared/motion";
 import { RatingStars } from "@/components/shared/rating-stars";
-
-export const revalidate = 300;
 
 interface ProductDetailPageProps {
   params: Promise<{ slug: string }>;
@@ -66,7 +68,18 @@ export default async function ProductDetailPage({
 
   if (!product) notFound();
 
-  const related = await getRelatedProducts(product, 4);
+  const [related, sessionUser, paymentSettings] = await Promise.all([
+    getRelatedProducts(product, 4),
+    getSessionUser(),
+    getPaymentSettings(),
+  ]);
+
+  const dbReady = isDbConfigured();
+  const walletEnabled = dbReady && paymentSettings.wallet.enabled;
+  const balance =
+    sessionUser && dbReady
+      ? (await getOrCreateWallet(sessionUser.id)).balance
+      : null;
   const prices = product.variants
     .filter((v) => v.active)
     .map((v) => v.price);
@@ -236,7 +249,12 @@ export default async function ProductDetailPage({
 
         {/* Panel varian — sticky di desktop */}
         <FadeUp delay={0.16} className="lg:sticky lg:top-24">
-          <VariantSelector product={product} />
+          <VariantSelector
+            product={product}
+            isAuthed={Boolean(sessionUser)}
+            balance={balance}
+            walletEnabled={walletEnabled}
+          />
         </FadeUp>
       </div>
 

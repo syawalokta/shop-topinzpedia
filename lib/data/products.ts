@@ -2,6 +2,7 @@ import { cache } from "react";
 import { Types } from "mongoose";
 
 import { connectDB, isDbConfigured } from "../db";
+import { availableCountByVariant } from "../services/stock";
 import { escapeRegex } from "../utils";
 import { Category, Product, Variant } from "../../models";
 import { fallbackProducts } from "./fallback-data";
@@ -43,7 +44,6 @@ interface LeanVariant {
   productId: Types.ObjectId;
   name: string;
   price: number;
-  stock: number;
   duration: string;
   warranty: string;
   description: string;
@@ -76,13 +76,17 @@ function toProductDTO(doc: LeanProduct, startingPrice: number): ProductDTO {
   };
 }
 
-function toVariantDTO(doc: LeanVariant): VariantDTO {
+/**
+ * `stock` pada DTO = jumlah dokumen Stock berstatus "available"
+ * untuk varian tersebut (bukan lagi field angka di Variant).
+ */
+function toVariantDTO(doc: LeanVariant, availableStock: number): VariantDTO {
   return {
     id: String(doc._id),
     productId: String(doc.productId),
     name: doc.name,
     price: doc.price,
-    stock: doc.stock,
+    stock: availableStock,
     duration: doc.duration,
     warranty: doc.warranty,
     description: doc.description,
@@ -220,7 +224,12 @@ export const getProductBySlug = cache(async function getProductBySlug(
       .sort({ price: 1 })
       .lean()) as unknown as LeanVariant[];
 
-    const variants = variantDocs.map(toVariantDTO);
+    const stockCounts = await availableCountByVariant(
+      variantDocs.map((v) => v._id)
+    );
+    const variants = variantDocs.map((v) =>
+      toVariantDTO(v, stockCounts.get(String(v._id)) ?? 0)
+    );
     const startingPrice = variants.length ? variants[0].price : 0;
 
     return { ...toProductDTO(doc, startingPrice), variants };

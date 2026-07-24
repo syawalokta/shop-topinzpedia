@@ -39,10 +39,6 @@ const formSchema = z.object({
     const num = Number(value);
     return Number.isInteger(num) && num >= 0;
   }, "Harga harus bilangan bulat ≥ 0"),
-  stock: z.string().refine((value) => {
-    const num = Number(value);
-    return Number.isInteger(num) && num >= 0;
-  }, "Stok harus bilangan bulat ≥ 0"),
   duration: z.string().min(1, "Isi durasi, mis. 1 Bulan").max(40),
   warranty: z.string().min(1, "Isi garansi, mis. Garansi 30 Hari").max(60),
   description: z.string().max(300, "Maksimal 300 karakter"),
@@ -69,7 +65,6 @@ export function VariantDialog({
   const toDefaults = (): VariantFormValues => ({
     name: variant?.name ?? "",
     price: String(variant?.price ?? ""),
-    stock: String(variant?.stock ?? 0),
     duration: variant?.duration ?? "1 Bulan",
     warranty: variant?.warranty ?? "Garansi 30 Hari",
     description: variant?.description ?? "",
@@ -98,7 +93,6 @@ export function VariantDialog({
     const payload: VariantInput = {
       name: values.name,
       price: Number(values.price),
-      stock: Number(values.stock),
       duration: values.duration,
       warranty: values.warranty,
       description: values.description,
@@ -187,17 +181,6 @@ export function VariantDialog({
                 {...register("warranty")}
               />
               {fieldError(errors.warranty?.message)}
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="var-stock">Stok</Label>
-              <Input
-                id="var-stock"
-                type="number"
-                min={0}
-                aria-invalid={Boolean(errors.stock)}
-                {...register("stock")}
-              />
-              {fieldError(errors.stock?.message)}
             </div>
             <div className="space-y-2">
               <Label htmlFor="var-active">Status</Label>

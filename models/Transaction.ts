@@ -6,15 +6,15 @@ import {
   type Model,
 } from "mongoose";
 
-/**
- * Skema transaksi — disiapkan untuk fitur payment gateway,
- * riwayat transaksi, dan dashboard admin di fase berikutnya.
- */
 const TransactionSchema = new Schema(
   {
     invoice: { type: String, required: true, unique: true },
-    /** Sementara string bebas (guest/email) — nanti ref ke model User */
-    userId: { type: String, default: "guest", index: true },
+    userId: {
+      type: Schema.Types.ObjectId,
+      ref: "User",
+      required: true,
+      index: true,
+    },
     productId: {
       type: Schema.Types.ObjectId,
       ref: "Product",
@@ -25,14 +25,20 @@ const TransactionSchema = new Schema(
       ref: "Variant",
       required: true,
     },
-    paymentMethod: { type: String, default: "qris" },
-    total: { type: Number, required: true, min: 0 },
-    status: {
+    /** "wallet" — nanti mudah ditambah: qris, midtrans, tripay, duitku */
+    paymentMethod: { type: String, default: "wallet" },
+    paymentStatus: {
       type: String,
-      enum: ["pending", "paid", "delivered", "cancelled", "refunded"],
+      enum: ["pending", "paid", "failed", "refunded"],
       default: "pending",
       index: true,
     },
+    total: { type: Number, required: true, min: 0 },
+    /** Isi akun yang terkirim ke pembeli (salinan dari Stock.content) */
+    deliveredContent: { type: String, default: "" },
+    /** Snapshot nama untuk riwayat (tahan terhadap penghapusan produk) */
+    productName: { type: String, default: "" },
+    variantName: { type: String, default: "" },
   },
   { timestamps: true }
 );

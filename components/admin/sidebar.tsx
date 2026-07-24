@@ -3,16 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
+  Boxes,
   ExternalLink,
+  HandCoins,
   LayoutDashboard,
   LogOut,
   Menu,
   Package,
+  ReceiptText,
+  Settings,
   Tags,
+  Users,
   Zap,
 } from "lucide-react";
 
-import { logoutAdmin } from "@/lib/actions/auth";
+import { signOutAction } from "@/lib/actions/auth-user";
 import { cn } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -31,6 +36,21 @@ const NAV_ITEMS = [
   { href: "/admin", label: "Dashboard", icon: LayoutDashboard, exact: true },
   { href: "/admin/products", label: "Produk", icon: Package, exact: false },
   { href: "/admin/categories", label: "Kategori", icon: Tags, exact: false },
+  { href: "/admin/stock", label: "Stock", icon: Boxes, exact: false },
+  { href: "/admin/topups", label: "Topup", icon: HandCoins, exact: false },
+  {
+    href: "/admin/transactions",
+    label: "Transaksi",
+    icon: ReceiptText,
+    exact: false,
+  },
+  { href: "/admin/users", label: "Users", icon: Users, exact: false },
+  {
+    href: "/admin/settings",
+    label: "Pengaturan",
+    icon: Settings,
+    exact: false,
+  },
 ];
 
 function AdminLogo() {
@@ -91,7 +111,7 @@ function SidebarFooter() {
         Lihat Situs
       </a>
       <div className="flex items-center justify-between gap-2 px-1">
-        <form action={logoutAdmin} className="flex-1">
+        <form action={signOutAction} className="flex-1">
           <Button
             type="submit"
             variant="ghost"

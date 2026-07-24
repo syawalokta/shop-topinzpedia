@@ -6,6 +6,11 @@ import {
   type Model,
 } from "mongoose";
 
+/**
+ * Catatan: field `stock` (angka) sudah DIHAPUS.
+ * Stok kini dihitung otomatis dari koleksi Stock
+ * (jumlah dokumen berstatus "available" per varian).
+ */
 const VariantSchema = new Schema(
   {
     productId: {
@@ -16,7 +21,6 @@ const VariantSchema = new Schema(
     },
     name: { type: String, required: true, trim: true },
     price: { type: Number, required: true, min: 0 },
-    stock: { type: Number, default: 0, min: 0 },
     duration: { type: String, default: "30 Hari" },
     warranty: { type: String, default: "Garansi 30 Hari" },
     description: { type: String, default: "" },

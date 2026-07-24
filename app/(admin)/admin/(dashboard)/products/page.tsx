@@ -5,7 +5,8 @@ import { Layers, Pencil, Plus } from "lucide-react";
 
 import { deleteProduct } from "@/lib/actions/products";
 import { isDbConfigured } from "@/lib/db";
-import { adminListProducts } from "@/lib/data/admin";
+import { adminListCategories, adminListProducts } from "@/lib/data/admin";
+import { parsePage } from "@/lib/pagination";
 import { formatCompact, formatIDR } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -17,16 +18,42 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import { DataToolbar } from "@/components/admin/data-toolbar";
 import { DbNotice } from "@/components/admin/db-notice";
 import { DeleteButton } from "@/components/admin/delete-button";
+import { PaginationNav } from "@/components/shared/pagination-nav";
+import { StatusBadge } from "@/components/shared/status-badge";
 
 export const metadata: Metadata = {
   title: "Kelola Produk",
 };
 
-export default async function AdminProductsPage() {
+interface AdminProductsPageProps {
+  searchParams: Promise<{
+    q?: string;
+    category?: string;
+    status?: string;
+    page?: string;
+  }>;
+}
+
+export default async function AdminProductsPage({
+  searchParams,
+}: AdminProductsPageProps) {
   const dbReady = isDbConfigured();
-  const products = dbReady ? await adminListProducts() : [];
+  const params = await searchParams;
+
+  const [result, categories] = dbReady
+    ? await Promise.all([
+        adminListProducts({
+          q: params.q,
+          category: params.category,
+          status: params.status,
+          page: parsePage(params.page),
+        }),
+        adminListCategories(),
+      ])
+    : [null, []];
 
   return (
     <>
@@ -37,7 +64,7 @@ export default async function AdminProductsPage() {
           </h1>
           <p className="mt-1 text-sm text-muted-foreground">
             {dbReady
-              ? `${products.length} produk — aktif maupun nonaktif.`
+              ? `${result?.total ?? 0} produk — aktif maupun nonaktif.`
               : "Hubungkan database untuk mengelola produk."}
           </p>
         </div>
@@ -49,27 +76,43 @@ export default async function AdminProductsPage() {
         </Button>
       </div>
 
-      <div className="mt-8">
+      {dbReady ? (
+        <div className="mt-6">
+          <DataToolbar
+            searchPlaceholder="Cari nama produk…"
+            filters={[
+              {
+                param: "category",
+                placeholder: "Semua Kategori",
+                options: categories.map((c) => ({
+                  value: c.slug,
+                  label: c.name,
+                })),
+              },
+              {
+                param: "status",
+                placeholder: "Semua Status",
+                options: [
+                  { value: "active", label: "Aktif" },
+                  { value: "inactive", label: "Nonaktif" },
+                ],
+              },
+            ]}
+          />
+        </div>
+      ) : null}
+
+      <div className="mt-5">
         {!dbReady ? (
           <DbNotice />
-        ) : products.length === 0 ? (
+        ) : !result || result.items.length === 0 ? (
           <div className="rounded-lg border border-dashed bg-card px-6 py-16 text-center">
             <h2 className="font-heading text-lg font-semibold">
-              Belum ada produk
+              Tidak ada produk
             </h2>
             <p className="mt-1.5 text-sm text-muted-foreground">
-              Tambahkan produk pertamamu atau jalankan{" "}
-              <code className="rounded bg-muted px-1.5 py-0.5 font-mono text-xs">
-                npm run seed
-              </code>{" "}
-              untuk mengisi data contoh.
+              Ubah filter pencarian atau tambahkan produk baru.
             </p>
-            <Button asChild size="sm" className="mt-5 rounded-full">
-              <Link href="/admin/products/new">
-                <Plus className="size-4" />
-                Tambah Produk
-              </Link>
-            </Button>
           </div>
         ) : (
           <div className="rounded-lg border bg-card shadow-soft">
@@ -87,7 +130,7 @@ export default async function AdminProductsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {products.map((product) => (
+                {result.items.map((product) => (
                   <TableRow key={product.id}>
                     <TableCell>
                       <div className="flex items-center gap-3">
@@ -134,15 +177,7 @@ export default async function AdminProductsPage() {
                       {formatCompact(product.sold)}
                     </TableCell>
                     <TableCell>
-                      {product.status === "active" ? (
-                        <Badge className="border-transparent bg-emerald-500/10 text-emerald-600 dark:text-emerald-400">
-                          Aktif
-                        </Badge>
-                      ) : (
-                        <Badge className="border-transparent bg-muted text-muted-foreground">
-                          Nonaktif
-                        </Badge>
-                      )}
+                      <StatusBadge status={product.status} />
                     </TableCell>
                     <TableCell>
                       <div className="flex items-center justify-end gap-0.5">
@@ -182,6 +217,15 @@ export default async function AdminProductsPage() {
           </div>
         )}
       </div>
+
+      {result ? (
+        <PaginationNav
+          page={result.page}
+          pages={result.pages}
+          total={result.total}
+          label="produk"
+        />
+      ) : null}
     </>
   );
 }
