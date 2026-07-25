@@ -70,6 +70,9 @@ export function VariantSelector({
 
       if (result.ok) {
         toast.success("Pembelian berhasil! Akun kamu sudah terkirim. 🎉");
+        if (result.emailFailed) {
+          toast.warning("Gagal mengirim email, namun proses berhasil.");
+        }
         setDialogOpen(false);
         router.push(`/dashboard/transactions/${result.invoice}`);
         return;

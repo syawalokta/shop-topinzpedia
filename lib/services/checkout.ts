@@ -2,6 +2,9 @@ import { randomInt } from "crypto";
 import { Types } from "mongoose";
 
 import { connectDB } from "../db";
+import { SITE } from "../constants";
+import { getEmailService, isEmailConfigured } from "../email";
+import { formatDate, formatIDR } from "../utils";
 import { creditWallet, debitWalletIfSufficient } from "./wallet";
 import { getPaymentSettings } from "./settings";
 import { Product, Stock, Transaction, User, Variant } from "../../models";
@@ -23,7 +26,7 @@ import { Product, Stock, Transaction, User, Variant } from "../../models";
  */
 
 export type CheckoutResult =
-  | { ok: true; invoice: string }
+  | { ok: true; invoice: string; emailFailed?: boolean }
   | { ok: false; error: string; code: "AUTH" | "STOCK" | "BALANCE" | "OTHER" };
 
 function generateInvoice(): string {
@@ -155,7 +158,28 @@ export async function purchaseWithWallet(
   // Naikkan role user biasa menjadi buyer (admin tidak diubah)
   await User.updateOne({ _id: userId, role: "user" }, { role: "buyer" });
 
-  return { ok: true, invoice };
+  // Email notifikasi (Resend) — kegagalan email TIDAK membatalkan transaksi
+  let emailFailed = false;
+  try {
+    const buyer = await User.findById(userId).select("name email").lean();
+    if (buyer) {
+      const sent = await getEmailService().sendPurchaseSuccess(buyer.email, {
+        name: buyer.name,
+        invoice,
+        productName: product.name,
+        variantName: `${variant.name} · ${variant.duration}`,
+        date: formatDate(new Date()),
+        total: formatIDR(price),
+        detailUrl: `${SITE.url}/dashboard/transactions/${invoice}`,
+      });
+      emailFailed = isEmailConfigured() && !sent;
+    }
+  } catch (error) {
+    console.error("[checkout] email gagal:", error);
+    emailFailed = isEmailConfigured();
+  }
+
+  return { ok: true, invoice, emailFailed };
 }
 
 /** Ringkas: apakah user pernah bertransaksi sukses (untuk statistik). */

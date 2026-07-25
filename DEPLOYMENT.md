@@ -30,7 +30,8 @@ Panduan instalasi production untuk **Railway (rekomendasi)**, **VPS**, dan Verce
 | `NEXT_PUBLIC_WHATSAPP` | ✅ | Nomor WA admin tanpa `+`, mis. `62812xxxx` |
 | `SEED_ADMIN_PASSWORD` | Disarankan | Password akun admin saat seed |
 | `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Opsional | Untuk Login Google |
-| `SMTP_HOST/PORT/USER/PASS`, `EMAIL_FROM` | Disarankan | Verifikasi email & reset password. Tanpa ini: akun baru auto-verified, reset password nonaktif |
+| `RESEND_API_KEY` | Disarankan | Email via Resend (verifikasi, reset password, invoice, topup). Placeholder `re_xxxxxxxxx` — ganti dengan milikmu dari resend.com |
+| `DEFAULT_EMAIL_FROM` / `SUPPORT_EMAIL` | Disarankan | mis. `no-reply@topinzpedia.my.id` / `support@topinzpedia.my.id` |
 | `CLOUDINARY_CLOUD_NAME/API_KEY/API_SECRET` | ✅ Production | Penyimpanan gambar (logo, banner, bukti, QRIS, avatar). Tanpa ini: fallback lokal `public/uploads` (dev only) |
 
 > ⚠️ **Gejala `AUTH_SECRET` belum diset:** register berhasil tapi login gagal/stuck, halaman `/login` blank, atau error "Configuration". Set variabelnya lalu **redeploy/restart**.

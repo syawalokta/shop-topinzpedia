@@ -223,7 +223,7 @@ export function SettingsForm({ payment, site }: SettingsFormProps) {
             description={
               site.mailConfigured
                 ? "User baru harus klik tautan di email sebelum bisa login. Admin selalu dikecualikan."
-                : "Butuh konfigurasi SMTP (SMTP_HOST/USER/PASS) di server terlebih dahulu. Selama nonaktif, user baru langsung bisa login."
+                : "Butuh RESEND_API_KEY di environment server terlebih dahulu. Selama nonaktif, user baru langsung bisa login."
             }
             checked={verifyEnabled}
             onChange={setVerifyEnabled}

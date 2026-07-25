@@ -90,7 +90,7 @@ export function RegisterForm({ initialCaptcha }: RegisterFormProps) {
     // Tanpa auto-login — arahkan ke halaman login agar user masuk manual.
     if (result.needVerify) {
       toast.success("Akun dibuat! Cek email kamu untuk verifikasi.");
-      router.push("/login?registered=1&verify=1");
+      router.push(`/email-sent?email=${encodeURIComponent(values.email)}`);
     } else {
       toast.success("Akun berhasil dibuat! Silakan login.");
       router.push("/login?registered=1");

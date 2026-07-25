@@ -64,4 +64,6 @@ export interface ProductDetail extends ProductDTO {
 export interface ActionResult {
   ok: boolean;
   error?: string;
+  /** true bila proses sukses tapi email notifikasi gagal terkirim */
+  emailFailed?: boolean;
 }

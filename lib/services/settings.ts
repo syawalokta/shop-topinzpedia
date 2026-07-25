@@ -82,9 +82,7 @@ export async function getSiteSettings(): Promise<SiteSettingsDTO> {
   const googleConfigured = Boolean(
     process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET
   );
-  const mailConfigured = Boolean(
-    process.env.SMTP_HOST && process.env.SMTP_USER && process.env.SMTP_PASS
-  );
+  const mailConfigured = Boolean(process.env.RESEND_API_KEY);
 
   try {
     await connectDB();

@@ -1,9 +1,11 @@
 import { Types } from "mongoose";
 
 import { connectDB } from "../db";
+import { getEmailService, isEmailConfigured } from "../email";
 import { buildPaged, pageSkip, type Paged } from "../pagination";
-import { creditWallet } from "./wallet";
-import { Topup } from "../../models";
+import { formatDate, formatIDR } from "../utils";
+import { creditWallet, getOrCreateWallet } from "./wallet";
+import { Topup, User } from "../../models";
 
 /** Service topup manual (transfer bank / QRIS statis). */
 
@@ -136,7 +138,7 @@ export async function adminListTopups(params: {
 export async function approveTopup(
   topupId: string,
   adminNote = ""
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; emailFailed?: boolean }> {
   await connectDB();
   if (!Types.ObjectId.isValid(topupId)) {
     return { ok: false, error: "ID topup tidak valid." };
@@ -157,13 +159,35 @@ export async function approveTopup(
     "Topup saldo disetujui admin",
     `topup:${String(doc._id)}`
   );
-  return { ok: true };
+
+  // Email notifikasi — kegagalan TIDAK membatalkan approve
+  let emailFailed = false;
+  try {
+    const [buyer, wallet] = await Promise.all([
+      User.findById(doc.userId).select("name email").lean(),
+      getOrCreateWallet(String(doc.userId)),
+    ]);
+    if (buyer) {
+      const sent = await getEmailService().sendTopupApproved(buyer.email, {
+        name: buyer.name,
+        amount: formatIDR(doc.amount),
+        newBalance: formatIDR(wallet.balance),
+        date: formatDate(new Date()),
+      });
+      emailFailed = isEmailConfigured() && !sent;
+    }
+  } catch (error) {
+    console.error("[topup] email approve gagal:", error);
+    emailFailed = isEmailConfigured();
+  }
+
+  return { ok: true, emailFailed };
 }
 
 export async function rejectTopup(
   topupId: string,
   adminNote = ""
-): Promise<{ ok: boolean; error?: string }> {
+): Promise<{ ok: boolean; error?: string; emailFailed?: boolean }> {
   await connectDB();
   if (!Types.ObjectId.isValid(topupId)) {
     return { ok: false, error: "ID topup tidak valid." };
@@ -177,7 +201,25 @@ export async function rejectTopup(
   if (!doc) {
     return { ok: false, error: "Topup tidak ditemukan atau sudah diproses." };
   }
-  return { ok: true };
+
+  // Email notifikasi — kegagalan TIDAK membatalkan reject
+  let emailFailed = false;
+  try {
+    const buyer = await User.findById(doc.userId).select("name email").lean();
+    if (buyer) {
+      const sent = await getEmailService().sendTopupRejected(buyer.email, {
+        name: buyer.name,
+        amount: formatIDR(doc.amount),
+        reason: adminNote,
+      });
+      emailFailed = isEmailConfigured() && !sent;
+    }
+  } catch (error) {
+    console.error("[topup] email reject gagal:", error);
+    emailFailed = isEmailConfigured();
+  }
+
+  return { ok: true, emailFailed };
 }
 
 export async function topupStats(): Promise<{

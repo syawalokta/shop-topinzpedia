@@ -78,6 +78,23 @@ npm run build  # production build
 npm start      # jalankan hasil build
 ```
 
+## ✉️ Email (Resend)
+
+Semua email (verifikasi akun, reset password, invoice, notifikasi topup) memakai **Resend API** — tanpa SMTP.
+
+1. Daftar gratis di [resend.com](https://resend.com)
+2. **Domains** → tambahkan domainmu (mis. `topinzpedia.my.id`) → pasang DNS record yang diminta → verifikasi
+3. **API Keys** → **Create API Key** → salin
+4. Isi environment:
+
+```bash
+RESEND_API_KEY=re_xxxxxxxxx   # GANTI dengan API key milikmu sendiri
+DEFAULT_EMAIL_FROM=no-reply@topinzpedia.my.id
+SUPPORT_EMAIL=support@topinzpedia.my.id
+```
+
+Tanpa `RESEND_API_KEY`: aplikasi tetap berjalan normal — pengiriman email dilewati dengan log "Resend belum dikonfigurasi.", akun baru auto-verified, dan reset password nonaktif. Jangan pakai `onboarding@resend.dev` di production — gunakan domain terverifikasi.
+
 ## 📁 Struktur Proyek
 
 ```

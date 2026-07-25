@@ -84,7 +84,7 @@ export async function approveTopupAction(
     if (!result.ok) return { ok: false, error: result.error };
     revalidatePath("/admin/topups");
     revalidatePath("/admin");
-    return { ok: true };
+    return { ok: true, emailFailed: result.emailFailed };
   } catch (error) {
     console.error("[actions/topups] approve gagal:", error);
     return { ok: false, error: "Gagal menyetujui topup." };
@@ -102,7 +102,7 @@ export async function rejectTopupAction(
     const result = await rejectTopup(topupId, adminNote);
     if (!result.ok) return { ok: false, error: result.error };
     revalidatePath("/admin/topups");
-    return { ok: true };
+    return { ok: true, emailFailed: result.emailFailed };
   } catch (error) {
     console.error("[actions/topups] reject gagal:", error);
     return { ok: false, error: "Gagal menolak topup." };

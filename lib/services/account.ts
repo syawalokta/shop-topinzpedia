@@ -4,12 +4,8 @@ import { Types } from "mongoose";
 
 import { connectDB } from "../db";
 import { SITE } from "../constants";
+import { getEmailService, isEmailConfigured } from "../email";
 import { Token, User } from "../../models";
-import {
-  isMailConfigured,
-  sendResetPasswordEmail,
-  sendVerificationEmail,
-} from "./mail";
 
 /** Service verifikasi email & reset password (token sekali pakai). */
 
@@ -37,9 +33,9 @@ async function issueToken(
   return raw;
 }
 
-/** Kirim (ulang) email verifikasi. Return false bila SMTP tidak dikonfigurasi. */
+/** Kirim (ulang) email verifikasi via Resend. */
 export async function sendVerification(userId: string): Promise<boolean> {
-  if (!isMailConfigured()) return false;
+  if (!isEmailConfigured()) return false;
   await connectDB();
 
   const user = await User.findById(userId);
@@ -47,8 +43,7 @@ export async function sendVerification(userId: string): Promise<boolean> {
 
   const raw = await issueToken(user._id, "verify-email", VERIFY_TTL_MS);
   const url = `${SITE.url}/verify-email?token=${raw}`;
-  await sendVerificationEmail(user.email, user.name, url);
-  return true;
+  return getEmailService().sendVerificationEmail(user.email, user.name, url);
 }
 
 /** Verifikasi token email. Return true bila berhasil. */
@@ -75,7 +70,7 @@ export async function verifyEmailToken(raw: string): Promise<boolean> {
  * email hanya terkirim bila user ada & SMTP aktif.
  */
 export async function requestPasswordReset(email: string): Promise<void> {
-  if (!isMailConfigured()) return;
+  if (!isEmailConfigured()) return;
   await connectDB();
 
   const user = await User.findOne({ email: email.toLowerCase().trim() });
@@ -83,7 +78,7 @@ export async function requestPasswordReset(email: string): Promise<void> {
 
   const raw = await issueToken(user._id, "reset-password", RESET_TTL_MS);
   const url = `${SITE.url}/reset-password?token=${raw}`;
-  await sendResetPasswordEmail(user.email, user.name, url);
+  await getEmailService().sendResetPassword(user.email, user.name, url);
 }
 
 /** Validasi token reset tanpa mengonsumsinya (untuk render halaman). */

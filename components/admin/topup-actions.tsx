@@ -48,6 +48,9 @@ export function TopupActions({ topupId, amount, userName }: TopupActionsProps) {
             ? `Topup ${formatIDR(amount)} disetujui — saldo user bertambah.`
             : "Topup ditolak."
         );
+        if (result.emailFailed) {
+          toast.warning("Gagal mengirim email, namun proses berhasil.");
+        }
         setApproveOpen(false);
         setRejectOpen(false);
         setNote("");

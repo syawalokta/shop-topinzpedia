@@ -10,7 +10,7 @@ import {
   resetPasswordWithToken,
   sendVerification,
 } from "../services/account";
-import { isMailConfigured } from "../services/mail";
+import { isEmailConfigured as isMailConfigured } from "../email";
 import { getSiteSettings } from "../services/settings";
 import { registerUser } from "../services/users";
 import { registerSchema } from "../validations";
@@ -103,7 +103,7 @@ export async function registerAction(
     }
 
     // Verifikasi email hanya bila fitur DIAKTIFKAN admin (default OFF)
-    // dan SMTP terpasang. Selain itu akun langsung terverifikasi dan
+    // dan Resend terpasang. Selain itu akun langsung terverifikasi dan
     // user bisa langsung login.
     if (settings.emailVerificationEnabled && isMailConfigured()) {
       await sendVerification(result.userId);
@@ -140,7 +140,7 @@ export async function resendVerificationAction(
     return {
       ok: false,
       message:
-        "Pengiriman email belum dikonfigurasi di server (SMTP). Hubungi admin.",
+        "Pengiriman email belum dikonfigurasi di server (Resend). Hubungi admin.",
     };
   }
 
@@ -187,7 +187,7 @@ export async function forgotPasswordAction(payload: {
     return {
       ok: false,
       message:
-        "Fitur reset password membutuhkan konfigurasi email (SMTP) di server. Hubungi admin.",
+        "Fitur reset password membutuhkan konfigurasi email (Resend) di server. Hubungi admin.",
       captcha: generateCaptcha(),
     };
   }
