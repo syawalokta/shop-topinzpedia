@@ -14,7 +14,15 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Separator } from "@/components/ui/separator";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { ImageUpload } from "@/components/shared/image-upload";
 
 interface SettingsFormProps {
@@ -88,6 +96,13 @@ export function SettingsForm({ payment, site }: SettingsFormProps) {
   const [verifyEnabled, setVerifyEnabled] = useState(
     site.emailVerificationEnabled
   );
+  const [captchaProvider, setCaptchaProvider] = useState(
+    site.captcha.provider
+  );
+  const [turnstileSiteKey, setTurnstileSiteKey] = useState(
+    site.captcha.turnstileSiteKey
+  );
+  const [turnstileSecretKey, setTurnstileSecretKey] = useState("");
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -107,6 +122,9 @@ export function SettingsForm({ payment, site }: SettingsFormProps) {
         emailVerificationEnabled: verifyEnabled,
         landingBannerUrl: landingUrl,
         landingBannerPublicId: landingPublicId,
+        captchaProvider,
+        turnstileSiteKey,
+        turnstileSecretKey,
       });
 
       if (result.ok) {
@@ -240,6 +258,70 @@ export function SettingsForm({ payment, site }: SettingsFormProps) {
             onChange={setGoogleEnabled}
             disabled={!site.googleConfigured}
           />
+        </div>
+      </section>
+
+      {/* Captcha / Keamanan */}
+      <section className="rounded-lg border bg-card p-5 shadow-soft md:p-6">
+        <h2 className="font-heading text-base font-semibold">
+          Captcha (Anti-Bot)
+        </h2>
+        <p className="mt-0.5 text-xs text-muted-foreground">
+          Pilih Math (bawaan, tanpa setup) atau Cloudflare Turnstile (lebih
+          kuat). Turnstile butuh Site Key & Secret Key dari dashboard
+          Cloudflare.
+        </p>
+
+        <div className="mt-4 space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="captcha-provider">Provider Captcha</Label>
+            <Select
+              value={captchaProvider}
+              onValueChange={(v) =>
+                setCaptchaProvider(v as "math" | "turnstile")
+              }
+            >
+              <SelectTrigger id="captcha-provider" className="sm:w-72">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="math">Math (bawaan)</SelectItem>
+                <SelectItem value="turnstile">Cloudflare Turnstile</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          {captchaProvider === "turnstile" ? (
+            <div className="grid gap-4 rounded-xl border bg-muted/30 p-4 sm:grid-cols-2">
+              <div className="space-y-2">
+                <Label htmlFor="ts-site">Site Key</Label>
+                <Input
+                  id="ts-site"
+                  value={turnstileSiteKey}
+                  onChange={(e) => setTurnstileSiteKey(e.target.value)}
+                  placeholder="0x4AAAAAAA..."
+                  className="bg-card"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="ts-secret">Secret Key</Label>
+                <PasswordInput
+                  id="ts-secret"
+                  value={turnstileSecretKey}
+                  onChange={(e) => setTurnstileSecretKey(e.target.value)}
+                  placeholder={
+                    site.captcha.turnstileConfigured
+                      ? "••••••• (tersimpan — isi untuk mengganti)"
+                      : "0x4AAAAAAA..."
+                  }
+                  className="bg-card"
+                />
+                <p className="text-xs text-muted-foreground">
+                  Secret Key disimpan aman & tidak pernah ditampilkan kembali.
+                </p>
+              </div>
+            </div>
+          ) : null}
         </div>
       </section>
 

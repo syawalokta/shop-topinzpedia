@@ -171,6 +171,7 @@ async function main() {
     googleAuthEnabled: false,
     registrationEnabled: true,
     emailVerificationEnabled: false,
+    captcha: { provider: "math", turnstileSiteKey: "", turnstileSecretKey: "" },
   });
 
   console.log("→ Menanam halaman legal (S&K + Kebijakan Privasi)…");

@@ -3,7 +3,7 @@ import Credentials from "next-auth/providers/credentials";
 import Google from "next-auth/providers/google";
 import bcrypt from "bcryptjs";
 
-import { verifyCaptcha } from "@/lib/captcha";
+import { verifyCaptchaFromSettings } from "@/lib/captcha";
 import { connectDB } from "@/lib/db";
 import { getSiteSettings } from "@/lib/services/settings";
 import { User, Wallet } from "@/models";
@@ -53,12 +53,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         const password = String(credentials?.password ?? "");
 
         // 1. Captcha — tolak lebih awal sebelum menyentuh database (anti-spam)
-        if (
-          !verifyCaptcha(
-            String(credentials?.captchaToken ?? ""),
-            String(credentials?.captchaAnswer ?? "")
-          )
-        ) {
+        const captchaOk = await verifyCaptchaFromSettings(
+          String(credentials?.captchaToken ?? ""),
+          String(credentials?.captchaAnswer ?? "")
+        );
+        if (!captchaOk) {
           throw new LoginError("captcha");
         }
 

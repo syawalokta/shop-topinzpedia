@@ -33,18 +33,8 @@ export function Hero() {
       <div className="container-page grid items-center gap-14 pb-16 pt-28 md:pt-36 lg:grid-cols-2 lg:gap-10 lg:pb-24">
         {/* Kolom teks */}
         <div>
-          <FadeUp>
-            <span className="inline-flex items-center gap-2 rounded-full border bg-card px-3.5 py-1.5 text-xs font-medium text-muted-foreground shadow-soft">
-              <span className="relative flex size-2">
-                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex size-2 rounded-full bg-emerald-500" />
-              </span>
-              Dipercaya 10.000+ pelanggan di Indonesia
-            </span>
-          </FadeUp>
-
           <FadeUp delay={0.08}>
-            <h1 className="mt-5 font-heading text-4xl font-extrabold leading-[1.12] tracking-tight sm:text-5xl lg:text-[3.4rem]">
+            <h1 className="font-heading text-4xl font-extrabold leading-[1.12] tracking-tight sm:text-5xl lg:text-[3.4rem]">
               Akun Premium Digital{" "}
               <span className="bg-gradient-to-r from-primary to-secondary bg-clip-text text-transparent dark:to-blue-400">
                 Murah, Aman

@@ -1,33 +1,33 @@
 "use client";
 
 import { useState } from "react";
-import { Loader2, RotateCcw, ShieldQuestion } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
-import {
-  forgotPasswordAction,
-  refreshCaptchaAction,
-} from "@/lib/actions/auth-user";
-import type { CaptchaChallenge } from "@/lib/captcha";
+import { forgotPasswordAction } from "@/lib/actions/auth-user";
+import type { PublicCaptcha } from "@/lib/captcha";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  CaptchaField,
+  type CaptchaValue,
+} from "@/components/shared/captcha-field";
 
 export function ForgotPasswordForm({
   initialCaptcha,
 }: {
-  initialCaptcha: CaptchaChallenge;
+  initialCaptcha: PublicCaptcha;
 }) {
   const [captcha, setCaptcha] = useState(initialCaptcha);
+  const [captchaValue, setCaptchaValue] = useState<CaptchaValue>({
+    token: initialCaptcha.math?.token ?? "",
+    answer: "",
+  });
+  const [captchaReset, setCaptchaReset] = useState(0);
   const [email, setEmail] = useState("");
-  const [answer, setAnswer] = useState("");
   const [pending, setPending] = useState(false);
   const [sent, setSent] = useState(false);
-
-  async function refreshCaptcha() {
-    setCaptcha(await refreshCaptchaAction());
-    setAnswer("");
-  }
 
   async function handleSubmit(event: React.FormEvent) {
     event.preventDefault();
@@ -35,8 +35,8 @@ export function ForgotPasswordForm({
     try {
       const result = await forgotPasswordAction({
         email,
-        captchaToken: captcha.token,
-        captchaAnswer: answer,
+        captchaToken: captchaValue.token,
+        captchaAnswer: captchaValue.answer,
       });
       if (result.ok) {
         setSent(true);
@@ -45,7 +45,11 @@ export function ForgotPasswordForm({
         toast.error(result.message);
         if (result.captcha) {
           setCaptcha(result.captcha);
-          setAnswer("");
+          setCaptchaValue({
+            token: result.captcha.math?.token ?? "",
+            answer: "",
+          });
+          setCaptchaReset((n) => n + 1);
         }
       }
     } finally {
@@ -79,32 +83,11 @@ export function ForgotPasswordForm({
         />
       </div>
 
-      <div className="space-y-2 rounded-xl border bg-muted/40 p-3.5">
-        <Label htmlFor="forgot-captcha" className="gap-1.5">
-          <ShieldQuestion className="size-4 text-primary" aria-hidden />
-          Captcha: berapa hasil {captcha.question}?
-        </Label>
-        <div className="flex items-center gap-2">
-          <Input
-            id="forgot-captcha"
-            inputMode="numeric"
-            required
-            value={answer}
-            onChange={(e) => setAnswer(e.target.value)}
-            placeholder="Jawaban"
-            className="bg-card"
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={refreshCaptcha}
-            aria-label="Ganti soal captcha"
-          >
-            <RotateCcw className="size-4" />
-          </Button>
-        </div>
-      </div>
+      <CaptchaField
+        config={captcha}
+        onChange={setCaptchaValue}
+        resetSignal={captchaReset}
+      />
 
       <Button type="submit" className="w-full rounded-full" disabled={pending}>
         {pending ? (

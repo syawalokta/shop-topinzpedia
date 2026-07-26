@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft } from "lucide-react";
 
-import { generateCaptcha } from "@/lib/captcha";
+import { getPublicCaptcha } from "@/lib/captcha";
 import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 import {
   Card,
@@ -16,7 +16,8 @@ export const metadata: Metadata = {
   title: "Lupa Password",
 };
 
-export default function ForgotPasswordPage() {
+export default async function ForgotPasswordPage() {
+  const captcha = await getPublicCaptcha();
   return (
     <div className="w-full max-w-md">
       <Card>
@@ -28,7 +29,7 @@ export default function ForgotPasswordPage() {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <ForgotPasswordForm initialCaptcha={generateCaptcha()} />
+          <ForgotPasswordForm initialCaptcha={captcha} />
         </CardContent>
       </Card>
 

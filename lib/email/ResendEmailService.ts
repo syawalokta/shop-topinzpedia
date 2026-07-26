@@ -3,6 +3,7 @@ import { Resend } from "resend";
 import { InvoiceEmail } from "../../emails/InvoiceEmail";
 import { PurchaseSuccessEmail } from "../../emails/PurchaseSuccessEmail";
 import { ResetPasswordEmail } from "../../emails/ResetPasswordEmail";
+import { TestEmail } from "../../emails/TestEmail";
 import { TopupApprovedEmail } from "../../emails/TopupApprovedEmail";
 import { TopupRejectedEmail } from "../../emails/TopupRejectedEmail";
 import { VerificationEmail } from "../../emails/VerificationEmail";
@@ -122,6 +123,17 @@ export class ResendEmailService implements EmailService {
       to,
       subject: "Pengajuan topup kamu ditolak",
       react: TopupRejectedEmail({ ...data, supportEmail: supportEmail() }),
+    });
+  }
+
+  sendTest(to: string) {
+    return this.sendEmail({
+      to,
+      subject: "Tes Email — TopinzPedia",
+      react: TestEmail({
+        supportEmail: supportEmail(),
+        sentAt: new Date().toLocaleString("id-ID"),
+      }),
     });
   }
 }

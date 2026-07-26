@@ -19,6 +19,19 @@ const SiteSettingSchema = new Schema(
       url: { type: String, default: "" },
       publicId: { type: String, default: "" },
     },
+    /**
+     * Captcha: "math" (bawaan, tanpa layanan eksternal) atau
+     * "turnstile" (Cloudflare Turnstile). Key diisi dari panel admin.
+     */
+    captcha: {
+      provider: {
+        type: String,
+        enum: ["math", "turnstile"],
+        default: "math",
+      },
+      turnstileSiteKey: { type: String, default: "" },
+      turnstileSecretKey: { type: String, default: "" },
+    },
   },
   { timestamps: true }
 );

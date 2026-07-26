@@ -7,6 +7,7 @@ import {
 } from "@/lib/services/settings";
 import { DbNotice } from "@/components/admin/db-notice";
 import { SettingsForm } from "@/components/admin/settings-form";
+import { TestEmailCard } from "@/components/admin/test-email-card";
 
 export const metadata: Metadata = {
   title: "Pengaturan",
@@ -31,7 +32,8 @@ export default async function AdminSettingsPage() {
         Kelola metode pembayaran dan opsi autentikasi tanpa menyentuh kode.
       </p>
 
-      <div className="mt-7 max-w-3xl">
+      <div className="mt-7 max-w-3xl space-y-6">
+        <TestEmailCard mailConfigured={site.mailConfigured} />
         <SettingsForm payment={payment} site={site} />
       </div>
     </>

@@ -3,33 +3,36 @@
 import { useState } from "react";
 import Link from "next/link";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, MailWarning, RotateCcw, ShieldQuestion } from "lucide-react";
+import { Loader2, MailWarning } from "lucide-react";
 import { signIn } from "next-auth/react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
 import {
-  refreshCaptchaAction,
+  getPostLoginPath,
   resendVerificationAction,
 } from "@/lib/actions/auth-user";
-import type { CaptchaChallenge } from "@/lib/captcha";
+import type { PublicCaptcha } from "@/lib/captcha";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
 import { Separator } from "@/components/ui/separator";
+import {
+  CaptchaField,
+  type CaptchaValue,
+} from "@/components/shared/captcha-field";
 
 const loginSchema = z.object({
   identifier: z.string().min(3, "Isi email atau username"),
   password: z.string().min(1, "Isi password"),
-  captchaAnswer: z.string().min(1, "Jawab captcha terlebih dahulu"),
 });
 
 type LoginValues = z.infer<typeof loginSchema>;
 
 const ERROR_MESSAGES: Record<string, string> = {
-  captcha: "Jawaban captcha salah atau kedaluwarsa. Coba lagi.",
+  captcha: "Verifikasi captcha gagal. Coba lagi.",
   locked:
     "Terlalu banyak percobaan gagal. Akun dikunci sementara — coba lagi dalam 5 menit.",
   invalid: "Email/username atau password salah.",
@@ -38,16 +41,20 @@ const ERROR_MESSAGES: Record<string, string> = {
 interface LoginFormProps {
   googleEnabled: boolean;
   callbackUrl?: string;
-  initialCaptcha: CaptchaChallenge;
+  captcha: PublicCaptcha;
 }
 
 export function LoginForm({
   googleEnabled,
   callbackUrl,
-  initialCaptcha,
+  captcha,
 }: LoginFormProps) {
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [captcha, setCaptcha] = useState(initialCaptcha);
+  const [captchaValue, setCaptchaValue] = useState<CaptchaValue>({
+    token: captcha.math?.token ?? "",
+    answer: "",
+  });
+  const [captchaReset, setCaptchaReset] = useState(0);
   const [unverified, setUnverified] = useState(false);
   const [resending, setResending] = useState(false);
   const target =
@@ -57,25 +64,16 @@ export function LoginForm({
     register,
     handleSubmit,
     getValues,
-    setValue,
     formState: { errors, isSubmitting },
-  } = useForm<LoginValues>({
-    resolver: zodResolver(loginSchema),
-    defaultValues: { captchaAnswer: "" },
-  });
-
-  async function refreshCaptcha() {
-    setCaptcha(await refreshCaptchaAction());
-    setValue("captchaAnswer", "");
-  }
+  } = useForm<LoginValues>({ resolver: zodResolver(loginSchema) });
 
   async function onSubmit(values: LoginValues) {
     setUnverified(false);
     const result = await signIn("credentials", {
       identifier: values.identifier,
       password: values.password,
-      captchaToken: captcha.token,
-      captchaAnswer: values.captchaAnswer,
+      captchaToken: captchaValue.token,
+      captchaAnswer: captchaValue.answer,
       redirect: false,
     });
 
@@ -93,13 +91,24 @@ export function LoginForm({
             : (ERROR_MESSAGES[code] ?? ERROR_MESSAGES.invalid)
         );
       }
-      await refreshCaptcha();
+      setCaptchaReset((n) => n + 1);
+      setCaptchaValue({ token: "", answer: "" });
       return;
     }
 
     toast.success("Berhasil masuk. Selamat datang kembali!");
+    // Bila ada callbackUrl eksplisit, hormati; jika tidak, arahkan
+    // sesuai role (admin -> /admin, user -> /dashboard).
+    let destination = target;
+    if (!callbackUrl) {
+      try {
+        destination = await getPostLoginPath();
+      } catch {
+        destination = "/dashboard";
+      }
+    }
     // Navigasi penuh agar cookie sesi pasti terbaca middleware
-    window.location.assign(target);
+    window.location.assign(destination);
   }
 
   async function handleResend() {
@@ -137,9 +146,7 @@ export function LoginForm({
             disabled={resending}
             onClick={handleResend}
           >
-            {resending ? (
-              <Loader2 className="size-3 animate-spin" />
-            ) : null}
+            {resending ? <Loader2 className="size-3 animate-spin" /> : null}
             Kirim Ulang Email Verifikasi
           </Button>
         </div>
@@ -186,37 +193,11 @@ export function LoginForm({
           ) : null}
         </div>
 
-        {/* Captcha anti-spam */}
-        <div className="space-y-2 rounded-xl border bg-muted/40 p-3.5">
-          <Label htmlFor="login-captcha" className="gap-1.5">
-            <ShieldQuestion className="size-4 text-primary" aria-hidden />
-            Captcha: berapa hasil {captcha.question}?
-          </Label>
-          <div className="flex items-center gap-2">
-            <Input
-              id="login-captcha"
-              inputMode="numeric"
-              placeholder="Jawaban"
-              className="bg-card"
-              aria-invalid={Boolean(errors.captchaAnswer)}
-              {...register("captchaAnswer")}
-            />
-            <Button
-              type="button"
-              variant="ghost"
-              size="icon"
-              onClick={refreshCaptcha}
-              aria-label="Ganti soal captcha"
-            >
-              <RotateCcw className="size-4" />
-            </Button>
-          </div>
-          {errors.captchaAnswer ? (
-            <p role="alert" className="text-xs font-medium text-destructive">
-              {errors.captchaAnswer.message}
-            </p>
-          ) : null}
-        </div>
+        <CaptchaField
+          config={captcha}
+          onChange={setCaptchaValue}
+          resetSignal={captchaReset}
+        />
 
         <Button
           type="submit"

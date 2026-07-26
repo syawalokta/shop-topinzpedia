@@ -4,7 +4,7 @@ import { redirect } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 
 import { getSessionUser } from "@/lib/authz";
-import { generateCaptcha } from "@/lib/captcha";
+import { getPublicCaptcha } from "@/lib/captcha";
 import { getSiteSettings } from "@/lib/services/settings";
 import { RegisterForm } from "@/components/auth/register-form";
 import {
@@ -31,7 +31,7 @@ export default async function RegisterPage() {
     redirect(user.role === "admin" ? "/admin" : "/dashboard");
   }
 
-  const captcha = generateCaptcha();
+  const captcha = await getPublicCaptcha();
 
   return (
     <div className="w-full max-w-lg">

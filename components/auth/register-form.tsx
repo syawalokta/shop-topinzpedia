@@ -4,20 +4,21 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { Loader2, RotateCcw, ShieldQuestion } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { toast } from "sonner";
 import { z } from "zod";
 
-import {
-  refreshCaptchaAction,
-  registerAction,
-} from "@/lib/actions/auth-user";
-import type { CaptchaChallenge } from "@/lib/captcha";
+import { registerAction } from "@/lib/actions/auth-user";
+import type { PublicCaptcha } from "@/lib/captcha";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PasswordInput } from "@/components/ui/password-input";
+import {
+  CaptchaField,
+  type CaptchaValue,
+} from "@/components/shared/captcha-field";
 
 const registerFormSchema = z
   .object({
@@ -34,7 +35,6 @@ const registerFormSchema = z
     acceptTerms: z.boolean().refine((v) => v, {
       message: "Kamu harus menyetujui Syarat & Ketentuan",
     }),
-    captchaAnswer: z.string().min(1, "Jawab captcha terlebih dahulu"),
   })
   .refine((values) => values.password === values.confirmPassword, {
     path: ["confirmPassword"],
@@ -44,27 +44,26 @@ const registerFormSchema = z
 type RegisterValues = z.infer<typeof registerFormSchema>;
 
 interface RegisterFormProps {
-  initialCaptcha: CaptchaChallenge;
+  initialCaptcha: PublicCaptcha;
 }
 
 export function RegisterForm({ initialCaptcha }: RegisterFormProps) {
   const router = useRouter();
   const [captcha, setCaptcha] = useState(initialCaptcha);
+  const [captchaValue, setCaptchaValue] = useState<CaptchaValue>({
+    token: initialCaptcha.math?.token ?? "",
+    answer: "",
+  });
+  const [captchaReset, setCaptchaReset] = useState(0);
 
   const {
     register,
     handleSubmit,
-    setValue,
     formState: { errors, isSubmitting },
   } = useForm<RegisterValues>({
     resolver: zodResolver(registerFormSchema),
-    defaultValues: { acceptTerms: false, captchaAnswer: "" },
+    defaultValues: { acceptTerms: false },
   });
-
-  async function refreshCaptcha() {
-    setCaptcha(await refreshCaptchaAction());
-    setValue("captchaAnswer", "");
-  }
 
   async function onSubmit(values: RegisterValues) {
     const result = await registerAction({
@@ -74,20 +73,20 @@ export function RegisterForm({ initialCaptcha }: RegisterFormProps) {
       password: values.password,
       confirmPassword: values.confirmPassword,
       acceptTerms: values.acceptTerms,
-      captchaToken: captcha.token,
-      captchaAnswer: values.captchaAnswer,
+      captchaToken: captchaValue.token,
+      captchaAnswer: captchaValue.answer,
     });
 
     if (!result.ok) {
       toast.error(result.error ?? "Registrasi gagal.");
       if (result.captcha) {
         setCaptcha(result.captcha);
-        setValue("captchaAnswer", "");
+        setCaptchaValue({ token: result.captcha.math?.token ?? "", answer: "" });
+        setCaptchaReset((n) => n + 1);
       }
       return;
     }
 
-    // Tanpa auto-login — arahkan ke halaman login agar user masuk manual.
     if (result.needVerify) {
       toast.success("Akun dibuat! Cek email kamu untuk verifikasi.");
       router.push(`/email-sent?email=${encodeURIComponent(values.email)}`);
@@ -169,33 +168,11 @@ export function RegisterForm({ initialCaptcha }: RegisterFormProps) {
         </div>
       </div>
 
-      {/* Captcha sederhana — anti-bot tanpa layanan eksternal */}
-      <div className="space-y-2 rounded-xl border bg-muted/40 p-3.5">
-        <Label htmlFor="captchaAnswer" className="gap-1.5">
-          <ShieldQuestion className="size-4 text-primary" aria-hidden />
-          Captcha: berapa hasil {captcha.question}?
-        </Label>
-        <div className="flex items-center gap-2">
-          <Input
-            id="captchaAnswer"
-            inputMode="numeric"
-            placeholder="Jawaban"
-            className="bg-card"
-            aria-invalid={Boolean(errors.captchaAnswer)}
-            {...register("captchaAnswer")}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            onClick={refreshCaptcha}
-            aria-label="Ganti soal captcha"
-          >
-            <RotateCcw className="size-4" />
-          </Button>
-        </div>
-        {fieldError(errors.captchaAnswer?.message)}
-      </div>
+      <CaptchaField
+        config={captcha}
+        onChange={setCaptchaValue}
+        resetSignal={captchaReset}
+      />
 
       <div className="space-y-1">
         <label className="flex items-start gap-2.5 text-sm">

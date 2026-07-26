@@ -3,7 +3,11 @@
 import { z } from "zod";
 
 import { signOut } from "@/auth";
-import { generateCaptcha, verifyCaptcha, type CaptchaChallenge } from "../captcha";
+import {
+  getPublicCaptcha,
+  verifyCaptchaFromSettings,
+  type PublicCaptcha,
+} from "../captcha";
 import { connectDB, isDbConfigured } from "../db";
 import {
   requestPasswordReset,
@@ -21,8 +25,8 @@ export interface RegisterResult {
   error?: string;
   /** true bila user harus verifikasi email dulu sebelum login */
   needVerify?: boolean;
-  /** Captcha baru — dikirim ulang setiap kali gagal */
-  captcha?: CaptchaChallenge;
+  /** Captcha baru — dikirim ulang setiap kali gagal (math: soal baru) */
+  captcha?: PublicCaptcha;
 }
 
 export interface RegisterPayload {
@@ -39,13 +43,13 @@ export interface RegisterPayload {
 export async function registerAction(
   payload: RegisterPayload
 ): Promise<RegisterResult> {
-  const freshCaptcha = () => generateCaptcha();
+  const freshCaptcha = () => getPublicCaptcha();
 
   if (!isDbConfigured()) {
     return {
       ok: false,
       error: "Registrasi membutuhkan database. Set MONGODB_URI terlebih dahulu.",
-      captcha: freshCaptcha(),
+      captcha: await freshCaptcha(),
     };
   }
 
@@ -54,7 +58,7 @@ export async function registerAction(
     return {
       ok: false,
       error: "Registrasi sedang ditutup. Silakan hubungi admin.",
-      captcha: freshCaptcha(),
+      captcha: await freshCaptcha(),
     };
   }
 
@@ -62,7 +66,7 @@ export async function registerAction(
     return {
       ok: false,
       error: "Kamu harus menyetujui Syarat & Ketentuan.",
-      captcha: freshCaptcha(),
+      captcha: await freshCaptcha(),
     };
   }
 
@@ -70,15 +74,15 @@ export async function registerAction(
     return {
       ok: false,
       error: "Konfirmasi password tidak sama.",
-      captcha: freshCaptcha(),
+      captcha: await freshCaptcha(),
     };
   }
 
-  if (!verifyCaptcha(payload.captchaToken, payload.captchaAnswer)) {
+  if (!(await verifyCaptchaFromSettings(payload.captchaToken, payload.captchaAnswer))) {
     return {
       ok: false,
-      error: "Jawaban captcha salah atau kedaluwarsa. Coba lagi.",
-      captcha: freshCaptcha(),
+      error: "Verifikasi captcha gagal. Coba lagi.",
+      captcha: await freshCaptcha(),
     };
   }
 
@@ -92,14 +96,14 @@ export async function registerAction(
     return {
       ok: false,
       error: parsed.error.issues[0]?.message ?? "Data tidak valid.",
-      captcha: freshCaptcha(),
+      captcha: await freshCaptcha(),
     };
   }
 
   try {
     const result = await registerUser(parsed.data);
     if (!result.ok || !result.userId) {
-      return { ok: false, error: result.error, captcha: freshCaptcha() };
+      return { ok: false, error: result.error, captcha: await freshCaptcha() };
     }
 
     // Verifikasi email hanya bila fitur DIAKTIFKAN admin (default OFF)
@@ -121,7 +125,7 @@ export async function registerAction(
     return {
       ok: false,
       error: "Terjadi kesalahan saat mendaftar.",
-      captcha: freshCaptcha(),
+      captcha: await freshCaptcha(),
     };
   }
 }
@@ -165,12 +169,12 @@ export async function forgotPasswordAction(payload: {
   email: string;
   captchaToken: string;
   captchaAnswer: string;
-}): Promise<{ ok: boolean; message: string; captcha?: CaptchaChallenge }> {
-  if (!verifyCaptcha(payload.captchaToken, payload.captchaAnswer)) {
+}): Promise<{ ok: boolean; message: string; captcha?: PublicCaptcha }> {
+  if (!(await verifyCaptchaFromSettings(payload.captchaToken, payload.captchaAnswer))) {
     return {
       ok: false,
-      message: "Jawaban captcha salah atau kedaluwarsa.",
-      captcha: generateCaptcha(),
+      message: "Verifikasi captcha gagal. Coba lagi.",
+      captcha: await getPublicCaptcha(),
     };
   }
 
@@ -179,7 +183,7 @@ export async function forgotPasswordAction(payload: {
     return {
       ok: false,
       message: "Format email tidak valid.",
-      captcha: generateCaptcha(),
+      captcha: await getPublicCaptcha(),
     };
   }
 
@@ -188,7 +192,7 @@ export async function forgotPasswordAction(payload: {
       ok: false,
       message:
         "Fitur reset password membutuhkan konfigurasi email (Resend) di server. Hubungi admin.",
-      captcha: generateCaptcha(),
+      captcha: await getPublicCaptcha(),
     };
   }
 
@@ -239,11 +243,18 @@ export async function resetPasswordAction(payload: {
 }
 
 /** Ambil captcha baru (dipakai tombol refresh pada form register). */
-export async function refreshCaptchaAction(): Promise<CaptchaChallenge> {
-  return generateCaptcha();
+export async function refreshCaptchaAction(): Promise<PublicCaptcha> {
+  return getPublicCaptcha();
 }
 
 /** Logout — dipakai sidebar admin & dashboard user. */
 export async function signOutAction(): Promise<void> {
   await signOut({ redirectTo: "/login" });
+}
+
+/** Tujuan setelah login sesuai role (admin -> /admin, lainnya -> /dashboard). */
+export async function getPostLoginPath(): Promise<string> {
+  const { getSessionUser } = await import("../authz");
+  const user = await getSessionUser();
+  return user?.role === "admin" ? "/admin" : "/dashboard";
 }

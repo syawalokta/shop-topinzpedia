@@ -9,7 +9,7 @@ import {
 } from "lucide-react";
 
 import { getSessionUser } from "@/lib/authz";
-import { generateCaptcha } from "@/lib/captcha";
+import { getPublicCaptcha } from "@/lib/captcha";
 import { getSiteSettings } from "@/lib/services/settings";
 import { LoginForm } from "@/components/auth/login-form";
 import {
@@ -73,7 +73,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
   }
 
   const googleEnabled = settings.googleAuthEnabled && settings.googleConfigured;
-  const captcha = generateCaptcha();
+  const captcha = await getPublicCaptcha();
 
   return (
     <div className="w-full max-w-md">
@@ -121,7 +121,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
           <LoginForm
             googleEnabled={googleEnabled}
             callbackUrl={params.callbackUrl}
-            initialCaptcha={captcha}
+            captcha={captcha}
           />
         </CardContent>
       </Card>

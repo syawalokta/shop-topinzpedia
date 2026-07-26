@@ -141,8 +141,16 @@ export const settingsSchema = z.object({
   emailVerificationEnabled: z.boolean(),
   landingBannerUrl: z.string().max(500).default(""),
   landingBannerPublicId: z.string().max(300).default(""),
+  captchaProvider: z.enum(["math", "turnstile"]),
+  turnstileSiteKey: z.string().max(200).default(""),
+  /** Kosong = jangan ubah secret yang tersimpan */
+  turnstileSecretKey: z.string().max(200).default(""),
 });
 export type SettingsInput = z.infer<typeof settingsSchema>;
+
+export const testEmailSchema = z.object({
+  to: z.email("Format email tidak valid"),
+});
 
 /* ---------------- Profil user ---------------- */
 

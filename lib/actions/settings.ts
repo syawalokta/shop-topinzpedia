@@ -73,8 +73,16 @@ export async function updateSettingsAction(
         url: parsed.data.landingBannerUrl,
         publicId: parsed.data.landingBannerPublicId,
       },
+      captcha: {
+        provider: parsed.data.captchaProvider,
+        turnstileSiteKey: parsed.data.turnstileSiteKey,
+        turnstileSecretKey: parsed.data.turnstileSecretKey,
+      },
     });
     revalidatePath("/");
+    revalidatePath("/login");
+    revalidatePath("/register");
+    revalidatePath("/forgot-password");
 
     revalidatePath("/admin/settings");
     revalidatePath("/dashboard/topup");

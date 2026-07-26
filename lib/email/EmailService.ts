@@ -55,4 +55,5 @@ export interface EmailService {
   sendPurchaseSuccess(to: string, data: PurchaseEmailData): Promise<boolean>;
   sendTopupApproved(to: string, data: TopupApprovedData): Promise<boolean>;
   sendTopupRejected(to: string, data: TopupRejectedData): Promise<boolean>;
+  sendTest(to: string): Promise<boolean>;
 }

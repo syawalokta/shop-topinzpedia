@@ -25,6 +25,19 @@ export interface SiteSettingsDTO {
   mailConfigured: boolean;
   /** Banner promo landing page (opsional) */
   landingBanner: { url: string; publicId: string };
+  /** Captcha — TANPA secret (aman dikirim ke client) */
+  captcha: {
+    provider: "math" | "turnstile";
+    turnstileSiteKey: string;
+    turnstileConfigured: boolean;
+  };
+}
+
+/** Konfigurasi captcha lengkap (termasuk secret) — SERVER-ONLY. */
+export interface CaptchaConfig {
+  provider: "math" | "turnstile";
+  siteKey: string;
+  secretKey: string;
 }
 
 const paymentDefaults: PaymentSettingsDTO = {
@@ -98,6 +111,16 @@ export async function getSiteSettings(): Promise<SiteSettingsDTO> {
       { upsert: true, returnDocument: "after" }
     ).lean();
 
+    const provider = (doc?.captcha?.provider ?? "math") as "math" | "turnstile";
+    const siteKey =
+      doc?.captcha?.turnstileSiteKey ||
+      process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ||
+      "";
+    const secretKey =
+      doc?.captcha?.turnstileSecretKey ||
+      process.env.TURNSTILE_SECRET_KEY ||
+      "";
+
     return {
       googleAuthEnabled: doc?.googleAuthEnabled ?? false,
       registrationEnabled: doc?.registrationEnabled ?? true,
@@ -107,6 +130,11 @@ export async function getSiteSettings(): Promise<SiteSettingsDTO> {
       landingBanner: {
         url: doc?.landingBanner?.url ?? "",
         publicId: doc?.landingBanner?.publicId ?? "",
+      },
+      captcha: {
+        provider,
+        turnstileSiteKey: siteKey,
+        turnstileConfigured: Boolean(siteKey && secretKey),
       },
     };
   } catch (error) {
@@ -118,7 +146,36 @@ export async function getSiteSettings(): Promise<SiteSettingsDTO> {
       googleConfigured,
       mailConfigured,
       landingBanner: { url: "", publicId: "" },
+      captcha: {
+        provider: "math",
+        turnstileSiteKey: "",
+        turnstileConfigured: false,
+      },
     };
+  }
+}
+
+/** Konfigurasi captcha lengkap (dengan secret) untuk verifikasi server-side. */
+export async function getCaptchaConfig(): Promise<CaptchaConfig> {
+  try {
+    await connectDB();
+    const doc = await SiteSetting.findOne({ key: "site" })
+      .select("captcha")
+      .lean();
+    const provider = (doc?.captcha?.provider ?? "math") as "math" | "turnstile";
+    return {
+      provider,
+      siteKey:
+        doc?.captcha?.turnstileSiteKey ||
+        process.env.NEXT_PUBLIC_TURNSTILE_SITE_KEY ||
+        "",
+      secretKey:
+        doc?.captcha?.turnstileSecretKey ||
+        process.env.TURNSTILE_SECRET_KEY ||
+        "",
+    };
+  } catch {
+    return { provider: "math", siteKey: "", secretKey: "" };
   }
 }
 
@@ -127,11 +184,34 @@ export async function updateSiteSettings(input: {
   registrationEnabled: boolean;
   emailVerificationEnabled: boolean;
   landingBanner: { url: string; publicId: string };
+  captcha: {
+    provider: "math" | "turnstile";
+    turnstileSiteKey: string;
+    /** undefined = jangan ubah secret yang tersimpan */
+    turnstileSecretKey?: string;
+  };
 }): Promise<void> {
   await connectDB();
+
+  const set: Record<string, unknown> = {
+    googleAuthEnabled: input.googleAuthEnabled,
+    registrationEnabled: input.registrationEnabled,
+    emailVerificationEnabled: input.emailVerificationEnabled,
+    landingBanner: input.landingBanner,
+    "captcha.provider": input.captcha.provider,
+    "captcha.turnstileSiteKey": input.captcha.turnstileSiteKey,
+  };
+  // Secret hanya ditimpa bila admin mengisi nilai baru (anti-hapus tak sengaja)
+  if (
+    input.captcha.turnstileSecretKey &&
+    input.captcha.turnstileSecretKey.trim().length > 0
+  ) {
+    set["captcha.turnstileSecretKey"] = input.captcha.turnstileSecretKey.trim();
+  }
+
   await SiteSetting.findOneAndUpdate(
     { key: "site" },
-    { $set: input },
+    { $set: set },
     { upsert: true }
   );
 }
